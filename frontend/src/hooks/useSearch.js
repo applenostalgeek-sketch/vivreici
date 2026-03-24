@@ -2,13 +2,39 @@ import { useState, useEffect, useRef } from 'react'
 
 const ADRESSE_API = 'https://api-adresse.data.gouv.fr/search/'
 
-// Cache singleton communes-map.json
+// Ordre des catégories dans communes-scores.json (tableau compact)
+const SS_KEYS = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'demographie']
+
+// Cache singleton communes-map.json (slim)
 let communesPromise = null
 export function loadCommunes() {
   if (!communesPromise) {
     communesPromise = fetch('/communes-map.json').then(r => r.json())
   }
   return communesPromise
+}
+
+// Cache singleton communes-scores.json (lazy — sous_scores + prix_m2)
+// Format : [[code_insee, [eq,sec,imm,edu,san,tra,env,dem], prix_m2], ...]
+let scoresPromise = null
+let scoresMap = null  // Map<code_insee, {sous_scores, prix_m2_median}>
+
+export async function loadCommunesScores() {
+  if (scoresMap) return scoresMap
+  if (!scoresPromise) {
+    scoresPromise = fetch('/communes-scores.json')
+      .then(r => r.json())
+      .then(rows => {
+        scoresMap = new Map()
+        for (const [code, ss, pm2] of rows) {
+          const sous_scores = {}
+          SS_KEYS.forEach((k, i) => { sous_scores[k] = ss[i] ?? null })
+          scoresMap.set(code, { sous_scores, prix_m2_median: pm2 })
+        }
+        return scoresMap
+      })
+  }
+  return scoresPromise
 }
 
 // Cache singleton iris-locator.json
@@ -149,7 +175,6 @@ export async function getCommune(codeInsee) {
 }
 
 export async function getClassement(params = {}) {
-  const communes = await loadCommunes()
   const { departement, min_population = 0, limit = 100, ordre = 'desc', offset = 0 } = params
 
   // Filtres par score minimum par catégorie (ex: securite_min, sante_min, ...)
@@ -160,13 +185,22 @@ export async function getClassement(params = {}) {
     }
   }
 
+  const hasCatFilters = Object.keys(catMins).length > 0
+  const [communes, sMap] = await Promise.all([
+    loadCommunes(),
+    hasCatFilters ? loadCommunesScores() : Promise.resolve(null),
+  ])
+
   let filtered = communes.filter(c => {
     if (c.score_global == null) return false
     if (min_population > 0 && (c.population || 0) < min_population) return false
     if (departement && c.departement !== departement) return false
-    for (const [cat, minVal] of Object.entries(catMins)) {
-      const v = c.sous_scores?.[cat]
-      if (v == null || v < minVal) return false
+    if (hasCatFilters && sMap) {
+      const s = sMap.get(c.code_insee)
+      for (const [cat, minVal] of Object.entries(catMins)) {
+        const v = s?.sous_scores?.[cat]
+        if (v == null || v < minVal) return false
+      }
     }
     return true
   })
@@ -175,16 +209,19 @@ export async function getClassement(params = {}) {
     const vb = b.score_global ?? -1
     return ordre === 'asc' ? va - vb : vb - va
   })
-  return filtered.slice(Number(offset), Number(offset) + Number(limit)).map(c => ({
-    code_insee: c.code_insee,
-    nom: c.nom,
-    departement: c.departement,
-    region: c.region,
-    population: c.population,
-    score: {
-      score_global: c.score_global,
-      lettre: c.lettre,
-      sous_scores: c.sous_scores,
-    },
-  }))
+  return filtered.slice(Number(offset), Number(offset) + Number(limit)).map(c => {
+    const s = sMap?.get(c.code_insee)
+    return {
+      code_insee: c.code_insee,
+      nom: c.nom,
+      departement: c.departement,
+      region: c.region,
+      population: c.population,
+      score: {
+        score_global: c.score_global,
+        lettre: c.lettre,
+        sous_scores: s?.sous_scores ?? null,
+      },
+    }
+  })
 }

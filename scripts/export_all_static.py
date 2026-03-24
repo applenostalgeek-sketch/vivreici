@@ -156,9 +156,16 @@ def main():
     dump(DATA / 'stats.json', stats)
     print(f"  stats.json OK")
 
-    # ── 5. communes-map.json (enhanced) ─────────────────────────────────────
-    print("Génération communes-map.json...")
+    # ── 5. communes-map.json (slim — carte + recherche de base) ─────────────
+    # Ordre des sous_scores pour communes-scores.json (compact array)
+    SS_ORDER = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'demographie']
+    SS_COLS  = ['score_equipements', 'score_securite', 'score_immobilier', 'score_education',
+                'score_sante', 'score_transports', 'score_environnement', 'score_demographie']
+
+    print("Génération communes-map.json (slim)...")
     map_communes = []
+    scores_compact = []  # [[code_insee, [ss...], prix_m2], ...]
+
     for code, c in communes_map.items():
         if code in PLM_PARENTS:
             continue
@@ -178,23 +185,21 @@ def main():
             'longitude':    round(c['longitude'], 5),
             'score_global': round(s['score_global'], 1) if s['score_global'] is not None else None,
             'lettre':       lettre_ok(s['lettre']),
-            'sous_scores': {
-                'equipements':  round(s['score_equipements'], 1)  if s['score_equipements']  is not None and s['score_equipements']  >= 0 else None,
-                'securite':     round(s['score_securite'],    1)  if s['score_securite']     is not None and s['score_securite']     >= 0 else None,
-                'immobilier':   round(s['score_immobilier'],  1)  if s['score_immobilier']   is not None and s['score_immobilier']   >= 0 else None,
-                'education':    round(s['score_education'],   1)  if s['score_education']    is not None and s['score_education']    >= 0 else None,
-                'sante':        round(s['score_sante'],       1)  if s['score_sante']        is not None and s['score_sante']        >= 0 else None,
-                'transports':   round(s['score_transports'],  1)  if s['score_transports']   is not None and s['score_transports']   >= 0 else None,
-                'environnement':round(s['score_environnement'],1) if s['score_environnement'] is not None and s['score_environnement'] >= 0 else None,
-                'demographie':  round(s['score_demographie'], 1)  if s['score_demographie']  is not None and s['score_demographie']  >= 0 else None,
-            },
-            'donnees_brutes': {
-                'prix_m2_median': s['prix_m2_median'],
-            },
         })
+        # Scores compacts : [code_insee, [ss_array], prix_m2]
+        ss = []
+        for col in SS_COLS:
+            v = s[col]
+            ss.append(round(v) if v is not None and v >= 0 else None)
+        scores_compact.append([code, ss, round(s['prix_m2_median']) if s['prix_m2_median'] else None])
+
     map_communes.sort(key=lambda x: -(x['population'] or 0))
     dump(PUBLIC / 'communes-map.json', map_communes)
     print(f"  communes-map.json: {len(map_communes)} communes")
+
+    # ── 5b. communes-scores.json (lazy — sous_scores + prix_m2 pour recherche/classement) ──
+    dump(PUBLIC / 'communes-scores.json', scores_compact)
+    print(f"  communes-scores.json: {len(scores_compact)} entrées")
 
     # ── 6. iris-locator.json ─────────────────────────────────────────────────
     print("Génération iris-locator.json...")
