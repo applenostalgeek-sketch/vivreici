@@ -38,7 +38,7 @@ export default function Iris() {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    fetch(`/api/iris/${codeIris}`)
+    fetch(`/data/iris/${codeIris}.json`)
       .then(r => {
         if (!r.ok) throw new Error(`IRIS ${codeIris} introuvable`)
         return r.json()

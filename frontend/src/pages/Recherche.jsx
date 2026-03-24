@@ -4,6 +4,44 @@ import Nav from '../components/Nav.jsx'
 import { SCORE_COLORS, SCORE_LABELS, SCORE_MIN_VALUES, RAYON_OPTIONS } from '../constants.js'
 import { scoreToLettre } from '../utils/scoreUtils.js'
 import { usePageMeta } from '../hooks/usePageMeta.js'
+import { loadCommunes } from '../hooks/useSearch.js'
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+async function rechercheGeo({ lat, lng, rayon_km, score_min = 0, min_population = 0, limit = 150 }) {
+  const communes = await loadCommunes()
+  const results = []
+  for (const c of communes) {
+    if (!c.latitude || !c.longitude) continue
+    if (c.score_global == null) continue
+    if (score_min > 0 && c.score_global < score_min) continue
+    if (min_population > 0 && (c.population || 0) < min_population) continue
+    const dist = haversineKm(lat, lng, c.latitude, c.longitude)
+    if (dist > rayon_km) continue
+    results.push({
+      code_insee: c.code_insee,
+      nom: c.nom,
+      departement: c.departement,
+      population: c.population,
+      distance_km: Math.round(dist * 10) / 10,
+      score: {
+        score_global: c.score_global,
+        lettre: c.lettre,
+        sous_scores: c.sous_scores,
+        donnees_brutes: c.donnees_brutes,
+      },
+    })
+  }
+  results.sort((a, b) => (b.score.score_global ?? -1) - (a.score.score_global ?? -1))
+  return results.slice(0, limit)
+}
 
 // Autocomplete adresse via API Adresse gouv.fr
 function useAddressSearch() {
@@ -68,9 +106,7 @@ export default function Recherche() {
     // Lancer la recherche directement
     setLoading(true)
     setResults(null)
-    const params = new URLSearchParams({ lat, lng, rayon_km: rayon, score_min: SCORE_MIN_VALUES[scoreMin] ?? 0, min_population: minPop, limit: 150 })
-    fetch(`/api/recherche-geo?${params}`)
-      .then(r => r.json())
+    rechercheGeo({ lat, lng, rayon_km: rayon, score_min: SCORE_MIN_VALUES[scoreMin] ?? 0, min_population: minPop, limit: 150 })
       .then(setResults)
       .catch(() => setResults([]))
       .finally(() => setLoading(false))
@@ -84,15 +120,13 @@ export default function Recherche() {
     // Persist params in URL for back-navigation
     setSearchParams({ rayon, score: scoreMin, pop: minPop }, { replace: true })
     try {
-      const params = new URLSearchParams({
+      const data = await rechercheGeo({
         lat, lng,
         rayon_km: rayon,
         score_min: SCORE_MIN_VALUES[scoreMin] ?? 0,
         min_population: minPop,
         limit: 150,
       })
-      const r = await fetch(`/api/recherche-geo?${params}`)
-      const data = await r.json()
       setResults(data)
     } catch {
       setResults([])

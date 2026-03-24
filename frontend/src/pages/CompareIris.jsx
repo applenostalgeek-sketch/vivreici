@@ -145,10 +145,10 @@ function IrisPicker({ onPick }) {
     setCommuneCode(commune.code_insee)
     setCommuneName(commune.nom)
     setLoadingIris(true)
-    fetch(`/api/communes/${commune.code_insee}/iris`)
+    fetch(`/data/communes/${commune.code_insee}.json`)
       .then(r => r.json())
       .then(data => {
-        setIrisList(data.filter(z => z.score_global != null).slice(0, 30))
+        setIrisList((data.iris || []).filter(z => z.score_global != null).slice(0, 30))
         setStep('iris')
       })
       .catch(() => {})
@@ -211,12 +211,12 @@ export default function CompareIris() {
 
   useEffect(() => {
     if (!c1) return
-    fetch(`/api/iris/${c1}`).then(r => r.json()).then(setData1).catch(() => {})
+    fetch(`/data/iris/${c1}.json`).then(r => r.json()).then(setData1).catch(() => {})
   }, [c1])
 
   useEffect(() => {
     if (!c2) { setData2(null); return }
-    fetch(`/api/iris/${c2}`).then(r => r.json()).then(setData2).catch(() => {})
+    fetch(`/data/iris/${c2}.json`).then(r => r.json()).then(setData2).catch(() => {})
   }, [c2])
 
   function pickC2(code) {

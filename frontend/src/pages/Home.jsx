@@ -4,6 +4,7 @@ import SearchBar from '../components/SearchBar.jsx'
 import Nav from '../components/Nav.jsx'
 import { usePageMeta } from '../hooks/usePageMeta.js'
 import { SCORE_COLORS } from '../constants.js'
+import { loadCommunes } from '../hooks/useSearch.js'
 
 const CATEGORIES = [
   { icon: '🏪', label: 'Équipements',           desc: 'Commerces, services publics, équipements de proximité' },
@@ -27,12 +28,15 @@ export default function Home() {
   })
 
   useEffect(() => {
-    fetch('/api/stats').then(r => r.json()).then(setStats).catch(() => {})
-    // Quelques communes représentatives pour l'illustration hero
-    fetch('/api/classement?limit=6&min_population=15000&sort=score&ordre=desc')
-      .then(r => r.json())
-      .then(data => setTopCommunes(data.slice(0, 5)))
-      .catch(() => {})
+    fetch('/data/stats.json').then(r => r.json()).then(setStats).catch(() => {})
+    loadCommunes().then(communes => {
+      const top = communes
+        .filter(c => c.score_global != null && (c.population || 0) >= 15000)
+        .sort((a, b) => (b.score_global ?? -1) - (a.score_global ?? -1))
+        .slice(0, 5)
+        .map(c => ({ ...c, score: { lettre: c.lettre, score_global: c.score_global } }))
+      setTopCommunes(top)
+    }).catch(() => {})
   }, [])
 
   return (

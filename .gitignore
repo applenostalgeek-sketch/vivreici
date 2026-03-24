@@ -16,6 +16,10 @@ frontend/.vite/
 vivreici.db
 *.db
 
+# Données statiques générées — produites au build (35k communes + 48k IRIS = ~530MB)
+frontend/public/data/
+frontend/public/iris-locator.json
+
 # Temp / système
 .DS_Store
 *.log

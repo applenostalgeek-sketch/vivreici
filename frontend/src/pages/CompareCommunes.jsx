@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
 import { CATEGORY_META } from '../constants.js'
 import { usePageMeta } from '../hooks/usePageMeta.js'
+import { loadCommunes } from '../hooks/useSearch.js'
 
 const SCORE_TEXT = { A: 'text-score-A', B: 'text-score-B', C: 'text-score-C', D: 'text-score-D', E: 'text-score-E' }
 
@@ -26,8 +27,19 @@ function CommuneSearch({ label, value, onChange }) {
     if (q.length < 2) { setResults([]); return }
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/communes/search?q=${encodeURIComponent(q)}&limit=6`)
-        if (r.ok) setResults(await r.json())
+        const communes = await loadCommunes()
+        const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['-]/g, ' ').trim()
+        const qn = norm(q)
+        const scored = []
+        for (const c of communes) {
+          const nom = norm(c.nom)
+          const dep = norm(c.departement || '')
+          const cp = (c.codes_postaux || []).join(' ')
+          if (nom.startsWith(qn) || cp.startsWith(qn)) scored.push([0, c])
+          else if (nom.includes(qn) || dep.includes(qn) || cp.includes(qn)) scored.push([1, c])
+        }
+        scored.sort((a, b) => a[0] - b[0] || (b[1].population || 0) - (a[1].population || 0))
+        setResults(scored.slice(0, 6).map(([, c]) => c))
       } catch { setResults([]) }
     }, 250)
     return () => clearTimeout(t)
@@ -89,21 +101,21 @@ export default function CompareCommunes() {
   useEffect(() => {
     const c1 = searchParams.get('c1')
     const c2 = searchParams.get('c2')
-    if (c1) fetch(`/api/communes/${c1}`).then(r => r.ok ? r.json() : null).then(d => { if (d) setCommune1({ code_insee: d.code_insee, nom: d.nom, departement: d.departement }) }).catch(() => {})
-    if (c2) fetch(`/api/communes/${c2}`).then(r => r.ok ? r.json() : null).then(d => { if (d) setCommune2({ code_insee: d.code_insee, nom: d.nom, departement: d.departement }) }).catch(() => {})
+    if (c1) fetch(`/data/communes/${c1}.json`).then(r => r.ok ? r.json() : null).then(d => { if (d) setCommune1({ code_insee: d.code_insee, nom: d.nom, departement: d.departement }) }).catch(() => {})
+    if (c2) fetch(`/data/communes/${c2}.json`).then(r => r.ok ? r.json() : null).then(d => { if (d) setCommune2({ code_insee: d.code_insee, nom: d.nom, departement: d.departement }) }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Fetch données complètes quand commune sélectionnée
   useEffect(() => {
     if (!commune1) { setData1(null); return }
-    fetch(`/api/communes/${commune1.code_insee}`).then(r => r.ok ? r.json() : null).then(setData1)
+    fetch(`/data/communes/${commune1.code_insee}.json`).then(r => r.ok ? r.json() : null).then(setData1)
     setSearchParams(p => { const np = new URLSearchParams(p); np.set('c1', commune1.code_insee); return np })
   }, [commune1])
 
   useEffect(() => {
     if (!commune2) { setData2(null); return }
-    fetch(`/api/communes/${commune2.code_insee}`).then(r => r.ok ? r.json() : null).then(setData2)
+    fetch(`/data/communes/${commune2.code_insee}.json`).then(r => r.ok ? r.json() : null).then(setData2)
     setSearchParams(p => { const np = new URLSearchParams(p); np.set('c2', commune2.code_insee); return np })
   }, [commune2])
 

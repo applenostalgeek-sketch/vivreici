@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SCORE_COLORS, SCORE_LABELS, IRIS_ZOOM_THRESHOLD } from '../constants.js'
+import { loadCommunes } from '../hooks/useSearch.js'
 
-// En dessous de ce zoom : cercles préchargés. Au-dessus : polygones bbox.
+// En dessous de ce zoom : cercles préchargés. Au-dessus : polygones IRIS.
 const POLYGON_ZOOM = 9
 
 function getRadius(population, zoom) {
@@ -183,32 +184,11 @@ export default function MapView({
         })
         .catch(() => {})
 
-      // ── Couche polygones communes (bbox) ─────────────────────────────────────
+      // ── Couche polygones communes (désactivée — pas de géométrie en statique) ──
       const communePolyLayer = L.layerGroup()
       communePolyLayerRef.current = communePolyLayer
-
-      async function chargerCommunePoly() {
-        const b = map.getBounds()
-        const bboxKey = [b.getSouth().toFixed(2), b.getNorth().toFixed(2), b.getWest().toFixed(2), b.getEast().toFixed(2)].join(',')
-        if (bboxKey === lastCommunePolyBbox.current) return
-        lastCommunePolyBbox.current = bboxKey
-        try {
-          const url = `/api/communes/map?lat_min=${b.getSouth()}&lat_max=${b.getNorth()}&lng_min=${b.getWest()}&lng_max=${b.getEast()}`
-          const layers = await fetchAndBuild(L, url, lastCommunePolyBbox, bboxKey, activeLettersRef, (L, c) => {
-            if (!c.geometry && !c.latitude) return null
-            const color = SCORE_COLORS[c.lettre] || '#9CA3AF'
-            const tooltip = makeTooltip(c.nom, c.lettre, c.score_global, c.population)
-            if (!c.geometry) return null
-            const layer = L.geoJSON(c.geometry, { style: { fillColor: color, color: '#fff', weight: 1, opacity: 0.6, fillOpacity: 0.5 } })
-            layer.bindTooltip(tooltip, { sticky: true })
-            layer.on('click', () => navigate(`/commune/${c.code_insee}?tab=detail`))
-            return layer
-          })
-          if (layers === null) return
-          communePolyLayer.clearLayers()
-          layers.forEach(l => communePolyLayer.addLayer(l))
-        } catch {}
-      }
+      // Pas de polygones communes en mode statique — les cercles restent actifs
+      async function chargerCommunePoly() {}
       chargerCommunePolyRef.current = chargerCommunePoly
 
       // ── Couche IRIS (bbox) ────────────────────────────────────────────────────
@@ -221,21 +201,32 @@ export default function MapView({
         if (bboxKey === lastIrisBbox.current) return
         lastIrisBbox.current = bboxKey
         try {
-          const url = `/api/iris/map?lat_min=${b.getSouth()}&lat_max=${b.getNorth()}&lng_min=${b.getWest()}&lng_max=${b.getEast()}`
-          const layers = await fetchAndBuild(L, url, lastIrisBbox, bboxKey, activeLettersRef, (L, z) => {
-            if (!z.geometry && !z.latitude) return null
-            const color = SCORE_COLORS[z.lettre] || '#9CA3AF'
-            const typeLabel = z.typ_iris === 'H' ? 'Quartier résidentiel' : z.typ_iris === 'A' ? "Zone d'activité" : z.typ_iris === 'D' ? 'Zone diversifiée' : ''
-            const tooltip = makeTooltip(z.nom, z.lettre, z.score_global, z.population) + (typeLabel ? `<br/><em>${typeLabel}</em>` : '')
-            if (!z.geometry) return null
-            const layer = L.geoJSON(z.geometry, { style: { fillColor: color, color: '#fff', weight: 1.2, opacity: 0.7, fillOpacity: 0.55 } })
-            layer.bindTooltip(tooltip, { sticky: true })
-            layer.on('click', () => navigate(`/iris/${z.code_iris}?tab=detail`))
-            return layer
-          })
-          if (layers === null) return
+          const communes = await loadCommunes()
+          const visibles = communes.filter(c =>
+            c.latitude >= b.getSouth() && c.latitude <= b.getNorth() &&
+            c.longitude >= b.getWest() && c.longitude <= b.getEast()
+          )
+          const codes = [...new Set(visibles.map(c => c.code_insee))]
+          const fetches = await Promise.allSettled(
+            codes.map(code => fetch(`/data/iris-map/${code}.json`).then(r => r.ok ? r.json() : null))
+          )
+          if (bboxKey !== lastIrisBbox.current) return  // vue changée pendant le fetch
           irisLayer.clearLayers()
-          layers.forEach(l => irisLayer.addLayer(l))
+          const letters = activeLettersRef.current
+          for (const result of fetches) {
+            if (result.status !== 'fulfilled' || !result.value) continue
+            for (const feature of result.value.features) {
+              const z = feature.properties
+              if (!z.lettre || !letters.has(z.lettre)) continue
+              const color = SCORE_COLORS[z.lettre] || '#9CA3AF'
+              const typeLabel = z.typ_iris === 'H' ? 'Quartier résidentiel' : z.typ_iris === 'A' ? "Zone d'activité" : z.typ_iris === 'D' ? 'Zone diversifiée' : ''
+              const tooltip = makeTooltip(z.nom, z.lettre, z.score_global, z.population) + (typeLabel ? `<br/><em>${typeLabel}</em>` : '')
+              const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 1.2, opacity: 0.7, fillOpacity: 0.55 } })
+              layer.bindTooltip(tooltip, { sticky: true })
+              layer.on('click', () => navigate(`/iris/${z.code_iris}?tab=detail`))
+              layer.addTo(irisLayer)
+            }
+          }
         } catch {}
       }
       chargerIrisRef.current = chargerIris

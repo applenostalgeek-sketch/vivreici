@@ -45,13 +45,11 @@ export default function QuartiersCommune() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([
-      fetch(`/api/communes/${codeInsee}`).then(r => r.json()),
-      fetch(`/api/communes/${codeInsee}/iris`).then(r => r.json()),
-    ])
-      .then(([com, irisData]) => {
+    fetch(`/data/communes/${codeInsee}.json`)
+      .then(r => r.json())
+      .then(com => {
         setCommune(com)
-        setIris(irisData)
+        setIris(com.iris || [])
       })
       .catch(() => {})
       .finally(() => setLoading(false))
