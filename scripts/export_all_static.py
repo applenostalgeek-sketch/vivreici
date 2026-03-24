@@ -179,19 +179,17 @@ def main():
             'score_global': round(s['score_global'], 1) if s['score_global'] is not None else None,
             'lettre':       lettre_ok(s['lettre']),
             'sous_scores': {
-                'equipements':  s['score_equipements'] if s['score_equipements'] is not None and s['score_equipements'] >= 0 else None,
-                'securite':     s['score_securite']    if s['score_securite']    is not None and s['score_securite']    >= 0 else None,
-                'immobilier':   s['score_immobilier']  if s['score_immobilier']  is not None and s['score_immobilier']  >= 0 else None,
-                'education':    s['score_education']   if s['score_education']   is not None and s['score_education']   >= 0 else None,
-                'sante':        s['score_sante']       if s['score_sante']       is not None and s['score_sante']       >= 0 else None,
-                'transports':   s['score_transports']  if s['score_transports']  is not None and s['score_transports']  >= 0 else None,
-                'environnement':s['score_environnement'] if s['score_environnement'] is not None and s['score_environnement'] >= 0 else None,
-                'demographie':  s['score_demographie'] if s['score_demographie'] is not None and s['score_demographie'] >= 0 else None,
+                'equipements':  round(s['score_equipements'], 1)  if s['score_equipements']  is not None and s['score_equipements']  >= 0 else None,
+                'securite':     round(s['score_securite'],    1)  if s['score_securite']     is not None and s['score_securite']     >= 0 else None,
+                'immobilier':   round(s['score_immobilier'],  1)  if s['score_immobilier']   is not None and s['score_immobilier']   >= 0 else None,
+                'education':    round(s['score_education'],   1)  if s['score_education']    is not None and s['score_education']    >= 0 else None,
+                'sante':        round(s['score_sante'],       1)  if s['score_sante']        is not None and s['score_sante']        >= 0 else None,
+                'transports':   round(s['score_transports'],  1)  if s['score_transports']   is not None and s['score_transports']   >= 0 else None,
+                'environnement':round(s['score_environnement'],1) if s['score_environnement'] is not None and s['score_environnement'] >= 0 else None,
+                'demographie':  round(s['score_demographie'], 1)  if s['score_demographie']  is not None and s['score_demographie']  >= 0 else None,
             },
             'donnees_brutes': {
                 'prix_m2_median': s['prix_m2_median'],
-                'taux_criminalite': s['taux_criminalite'],
-                'taux_pauvrete': s['taux_pauvrete'],
             },
         })
     map_communes.sort(key=lambda x: -(x['population'] or 0))
