@@ -115,6 +115,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trigger Render redeploy
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
-          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+          [ -n "$RENDER_HOOK" ] && curl -s -X POST "$RENDER_HOOK" || true
