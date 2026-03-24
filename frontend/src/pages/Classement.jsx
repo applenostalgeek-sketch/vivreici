@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getClassement } from '../hooks/useSearch.js'
 import Nav from '../components/Nav.jsx'
 import { POP_OPTIONS, CATEGORY_META } from '../constants.js'
@@ -26,11 +26,12 @@ export default function Classement() {
     description: 'Classement des communes françaises par score de qualité de vie. Filtrez par département, taille et critères.',
   })
 
+  const [searchParams] = useSearchParams()
   const [communes, setCommunes] = useState([])
   const [loading, setLoading] = useState(true)
   const [minPop, setMinPop] = useState(2000)
-  const [dept, setDept] = useState('')
-  const [deptInput, setDeptInput] = useState('')
+  const [dept, setDept] = useState(() => searchParams.get('departement') || '')
+  const [deptInput, setDeptInput] = useState(() => searchParams.get('departement') || '')
   const [catFilters, setCatFilters] = useState({})
   const [hasMore, setHasMore] = useState(false)
   const [offset, setOffset] = useState(0)

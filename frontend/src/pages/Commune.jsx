@@ -120,7 +120,7 @@ export default function Commune() {
             <span>/</span>
             {data.departement && (
               <>
-                <button onClick={() => navigate('/classement')} className="hover:text-ink">
+                <button onClick={() => navigate(`/classement?departement=${data.departement}`)} className="hover:text-ink">
                   Dept. {data.departement}
                 </button>
                 <span>/</span>
@@ -448,10 +448,10 @@ export default function Commune() {
               </div>
               <div className="mt-3">
                 <button
-                  onClick={() => navigate('/classement')}
+                  onClick={() => navigate(`/classement?departement=${data.departement}`)}
                   className="text-sm text-ink-light underline hover:text-ink"
                 >
-                  Voir le classement national →
+                  Voir tout le département {data.departement} →
                 </button>
               </div>
             </div>
