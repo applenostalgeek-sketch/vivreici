@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: vivreici
+    runtime: docker
+    plan: starter        # $7/mois — toujours actif, 512MB RAM
+    region: frankfurt    # Frankfurt = le plus proche de la France
+
+    # Dockerfile construit le frontend (Node 20) + le backend (Python 3.11)
+    # La DB SQLite (308 Mo) est incluse dans l'image — à reconstruire quand les données changent
+    dockerfilePath: ./Dockerfile
+
+    dockerBuildArgs:
+      - GITHUB_REPO=applenostalgeek-sketch/vivreici
+
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./vivreici.db
+      - key: CORS_ORIGINS
+        value: https://vivreici.fr,https://www.vivreici.fr,https://vivreici.onrender.com,https://darling-lebkuchen-593861.netlify.app,https://lebonplan.net
+
+    healthCheckPath: /api/stats
+    autoDeploy: true
+
+# Note : la DB n'est pas dans git (voir .gitignore).
+# Pour déployer : copier vivreici.db dans le répertoire du projet avant `docker build`.
+# Ou utiliser GitHub LFS pour versionner la DB et la committer.

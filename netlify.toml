@@ -1,0 +1,17 @@
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+# Proxy /api/* vers le backend Render — zero changement de code frontend
+[[redirects]]
+  from = "/api/*"
+  to = "https://vivreici.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# SPA routing — toutes les routes non-fichier → index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

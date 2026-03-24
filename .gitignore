@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+.venv/
+*.egg-info/
+.env
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# SQLite — trop volumineux pour git (308 Mo)
+# Pour déployer : utiliser Render disk ou GitHub LFS
+vivreici.db
+*.db
+
+# Temp / système
+.DS_Store
+*.log
+tmp/

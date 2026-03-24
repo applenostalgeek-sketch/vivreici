@@ -1,0 +1,109 @@
+name: Update Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      dataset:
+        type: choice
+        description: 'Donnees a mettre a jour'
+        required: true
+        default: 'dvf'
+        options:
+          - bpe
+          - dvf
+          - ssmsi
+          - filosofi
+          - transport
+          - environnement
+          - demographie
+          - iris_scores
+          - full_rebuild
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download current DB from GitHub Releases
+        run: |
+          gh release download db-current --pattern "vivreici.db" --dir . --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install geopandas numpy scipy py7zr pyproj
+
+      - name: Run selected import
+        run: |
+          case "${{ inputs.dataset }}" in
+            bpe)
+              python -m backend.data_import.import_bpe
+              ;;
+            dvf)
+              python -m backend.data_import.import_dvf
+              python -m backend.data_import.import_dvf_historique
+              ;;
+            ssmsi)
+              python -m backend.data_import.import_securite
+              ;;
+            filosofi)
+              python -m backend.data_import.import_filosofi
+              python -m backend.data_import.import_filosofi_iris
+              ;;
+            transport)
+              python -m backend.data_import.import_transports
+              ;;
+            environnement)
+              python -m backend.data_import.import_environnement
+              ;;
+            demographie)
+              python -m backend.data_import.import_demographie
+              ;;
+            iris_scores)
+              python -m backend.data_import.import_bpe_iris
+              python -m backend.data_import.import_dvf_iris
+              python -m backend.data_import.import_filosofi_iris
+              ;;
+            full_rebuild)
+              python -m backend.data_import.import_geo
+              python -m backend.data_import.import_geo_fallback
+              python -m backend.data_import.import_coords
+              python -m backend.data_import.import_bpe
+              python -m backend.data_import.import_securite
+              python -m backend.data_import.import_education
+              python -m backend.data_import.import_dvf
+              python -m backend.data_import.import_dvf_historique
+              python -m backend.data_import.import_filosofi
+              python -m backend.data_import.import_transports
+              python -m backend.data_import.import_demographie
+              python -m backend.data_import.import_environnement
+              python -m backend.data_import.import_apl
+              python -m backend.data_import.import_iris_zones
+              python -m backend.data_import.import_bpe_iris
+              python -m backend.data_import.import_filosofi_iris
+              python -m backend.data_import.import_dvf_iris
+              python -m backend.data_import.import_iris_geometry
+              ;;
+          esac
+
+      - name: Upload updated DB to GitHub Releases
+        run: |
+          gh release upload db-current vivreici.db --clobber --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Render redeploy
+        run: |
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
