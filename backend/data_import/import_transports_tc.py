@@ -1,19 +1,25 @@
 """
-Import arrêts de transport en commun (bus, métro, tram, RER, cars interurbains...).
+Import arrêts de transport en commun avec filtre de fréquence.
 
 Source : transport.data.gouv.fr — fichier national agrégé des arrêts (~437 Mo, ~25M lignes)
-URL : https://transport.data.gouv.fr/datasets/arrets-de-transport-en-france
+Dataset : https://www.data.gouv.fr/fr/datasets/arrets-de-transport-en-france/
 
-Méthode :
-- Téléchargement du CSV national (streaming vers fichier temp)
-- Déduplication par arrondi lat/lon à 3 décimales (~100m)
-- Assignation à la commune la plus proche via KDTree haversine
-- Comptage d'arrêts uniques par commune (France métro uniquement)
-- Score TC = percentile du nb d'arrêts (plus d'arrêts = mieux)
+Méthode (v2 — filtre occurrence) :
+- Le CSV contient les arrêts de TOUS les opérateurs français concaténés.
+- Un même arrêt physique apparaît 1× pour un car scolaire, 10-50× pour un arrêt de métro/RER.
+- Passe 1 : comptage des occurrences brutes par position arrondie à 100m
+- Filtre : ne garder que les positions avec >= MIN_OCCURRENCES occurrences
+  → élimine automatiquement cars scolaires et lignes interurbaines peu fréquentes
+- Passe 2 : assignation des arrêts filtrés aux communes (KDTree centroïde)
+- Score TC = percentile du nb d'arrêts qualifiés par commune
 - Score transport final = 0.5 × score_gare + 0.5 × score_TC
 
-Ce script remplace import_transports.py pour le calcul du score final.
-import_transports.py doit être lancé d'abord pour avoir distance_gare_km.
+Seuil MIN_OCCURRENCES = 3 (tunable) :
+- Car scolaire / ligne hebdomadaire : 1-2 occurrences → filtré
+- Bus périurbain / ligne régulière : 3-10 occurrences → conservé
+- Arrêt urbain / RER / Métro : 10-50+ occurrences → conservé
+
+Ce script doit être lancé APRÈS import_transports.py (qui calcule distance_gare_km).
 """
 
 import asyncio
@@ -22,6 +28,7 @@ import os
 import tempfile
 import numpy as np
 import pandas as pd
+from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -32,23 +39,52 @@ from backend.database import async_session, init_db
 from backend.scoring import calculer_score_global, percentile_to_score
 
 
-TC_URL = (
-    "https://transport-data-gouv-fr-resource-history-prod.cellar-c2.services.clever-cloud.com"
-    "/81333/81333.20260113.121610.549772.csv"
-)
-
 # France métropolitaine (hors DOM-TOM)
 LAT_MIN, LAT_MAX = 41.0, 52.0
 LON_MIN, LON_MAX = -6.0, 10.0
 
 CHUNK_SIZE = 300_000
 
+# Seuil minimum d'occurrences pour qu'un arrêt soit considéré "qualifié"
+# Un arrêt scolaire/hebdomadaire apparaît 1-2× dans le dataset consolidé.
+# Un arrêt régulier apparaît dans plusieurs feeds d'opérateurs : ≥ 3 occurrences.
+MIN_OCCURRENCES = 3
 
-async def telecharger_arrets(tmp_path: str):
+
+async def get_tc_url() -> str:
+    """
+    Récupère dynamiquement l'URL du CSV national des arrêts TC depuis data.gouv.fr.
+    Fallback sur une URL hardcodée si l'API est indisponible.
+    """
+    FALLBACK_URL = (
+        "https://transport-data-gouv-fr-resource-history-prod.cellar-c2.services.clever-cloud.com"
+        "/81333/81333.20260113.121610.549772.csv"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://www.data.gouv.fr/api/1/datasets/arrets-de-transport-en-france/"
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                resources = data.get("resources", [])
+                # Prendre le premier fichier CSV (le plus récent en premier)
+                for res in resources:
+                    if res.get("format", "").lower() == "csv" and res.get("url"):
+                        url = res["url"]
+                        print(f"  → URL dynamique : {res.get('title', '')} ({res.get('latest', url)[:80]})")
+                        return res.get("latest") or url
+    except Exception as e:
+        print(f"  → API data.gouv.fr indisponible ({e}), utilisation URL fallback")
+    print(f"  → URL fallback : {FALLBACK_URL[:80]}...")
+    return FALLBACK_URL
+
+
+async def telecharger_arrets(tmp_path: str, url: str):
     """Télécharge le fichier national des arrêts vers un fichier temporaire."""
     print(f"Téléchargement arrêts TC nationaux (~437 Mo)...")
     async with httpx.AsyncClient(follow_redirects=True, timeout=600) as client:
-        async with client.stream("GET", TC_URL) as resp:
+        async with client.stream("GET", url) as resp:
             resp.raise_for_status()
             total = 0
             with open(tmp_path, "wb") as f:
@@ -60,12 +96,21 @@ async def telecharger_arrets(tmp_path: str):
     print(f"  → Téléchargement terminé ({total // (1024*1024)} Mo)")
 
 
-def compter_arrets_par_commune(tmp_path: str, codes: list, comm_lats: np.ndarray, comm_lons: np.ndarray) -> dict:
+def compter_arrets_par_commune(
+    tmp_path: str,
+    codes: list,
+    comm_lats: np.ndarray,
+    comm_lons: np.ndarray,
+    min_occurrences: int = MIN_OCCURRENCES,
+) -> dict:
     """
-    Lit le CSV par chunks, déduplique les arrêts, les assigne à la commune la plus proche.
-    Retourne un dict {code_insee: nb_arrets_uniques}.
+    Deux passes sur le CSV :
+    1. Comptage des occurrences brutes par position (rlat, rlon)
+    2. Assignation aux communes des seules positions avec >= min_occurrences occurrences
+
+    Retourne un dict {code_insee: nb_arrets_qualifies}.
     """
-    # KDTree sur coordonnées converties en (x, y, z) cartésien pour distance euclidienne ≈ haversine
+    # KDTree sur coordonnées converties en (x, y, z) cartésien
     R = 1.0
     xs = R * np.cos(np.radians(comm_lats)) * np.cos(np.radians(comm_lons))
     ys = R * np.cos(np.radians(comm_lats)) * np.sin(np.radians(comm_lons))
@@ -73,73 +118,108 @@ def compter_arrets_par_commune(tmp_path: str, codes: list, comm_lats: np.ndarray
     tree = cKDTree(np.column_stack([xs, ys, zs]))
     print(f"  → KDTree construit sur {len(codes)} communes")
 
-    # Ensemble global d'arrêts uniques par commune : {idx_commune: set of (rounded_lat, rounded_lon)}
-    commune_stops: dict[int, set] = {}
-
-    total_lignes = 0
-    total_uniques = 0
-
-    for chunk in pd.read_csv(
-        tmp_path,
+    csv_params = dict(
         chunksize=CHUNK_SIZE,
         usecols=["stop_lat", "stop_lon"],
         dtype={"stop_lat": float, "stop_lon": float},
         on_bad_lines="skip",
         low_memory=False,
-    ):
-        total_lignes += len(chunk)
+    )
 
-        # Filtrer France métropolitaine
+    # ── Passe 1 : comptage occurrences par position ───────────────────────────
+    print(f"\nPasse 1/2 : comptage des occurrences par position...")
+    position_counts: Counter = Counter()
+    total_lignes = 0
+
+    for chunk in pd.read_csv(tmp_path, **csv_params):
+        total_lignes += len(chunk)
         chunk = chunk[
             (chunk["stop_lat"] >= LAT_MIN) & (chunk["stop_lat"] <= LAT_MAX) &
             (chunk["stop_lon"] >= LON_MIN) & (chunk["stop_lon"] <= LON_MAX)
-        ].copy()
+        ]
+        if chunk.empty:
+            continue
+        chunk = chunk.copy()
+        chunk["rlat"] = chunk["stop_lat"].round(3)
+        chunk["rlon"] = chunk["stop_lon"].round(3)
+        # groupby pour compter les occurrences de chaque position dans ce chunk
+        for (rlat, rlon), cnt in chunk.groupby(["rlat", "rlon"]).size().items():
+            position_counts[(rlat, rlon)] += cnt
 
+        if total_lignes % (CHUNK_SIZE * 5) == 0:
+            print(f"  → {total_lignes:,} lignes lues...")
+
+    n_unique = len(position_counts)
+    counts_arr = np.array(list(position_counts.values()))
+    n_qualifies = int((counts_arr >= min_occurrences).sum())
+
+    print(f"  → {total_lignes:,} lignes traitées")
+    print(f"  → {n_unique:,} positions uniques trouvées")
+    print(f"  → Distribution : médiane={np.median(counts_arr):.0f}, "
+          f"p75={np.percentile(counts_arr,75):.0f}, "
+          f"p90={np.percentile(counts_arr,90):.0f}, "
+          f"max={counts_arr.max()}")
+    print(f"  → Seuil MIN_OCCURRENCES={min_occurrences} : "
+          f"{n_qualifies:,} positions retenues / {n_unique:,} "
+          f"({100*n_qualifies/n_unique:.1f}%)")
+
+    # Ensemble des positions qualifiées (lookup O(1))
+    qualifying: set = {pos for pos, cnt in position_counts.items() if cnt >= min_occurrences}
+
+    # ── Passe 2 : assignation aux communes ───────────────────────────────────
+    print(f"\nPasse 2/2 : assignation des arrêts qualifiés aux communes...")
+    commune_stops: dict[int, set] = {}
+    total_assignes = 0
+
+    for chunk in pd.read_csv(tmp_path, **csv_params):
+        chunk = chunk[
+            (chunk["stop_lat"] >= LAT_MIN) & (chunk["stop_lat"] <= LAT_MAX) &
+            (chunk["stop_lon"] >= LON_MIN) & (chunk["stop_lon"] <= LON_MAX)
+        ]
+        if chunk.empty:
+            continue
+        chunk = chunk.copy()
+        chunk["rlat"] = chunk["stop_lat"].round(3)
+        chunk["rlon"] = chunk["stop_lon"].round(3)
+
+        # Déduplication dans le chunk puis filtre sur les positions qualifiées
+        chunk = chunk.drop_duplicates(subset=["rlat", "rlon"])
+        chunk = chunk[chunk.apply(lambda r: (r["rlat"], r["rlon"]) in qualifying, axis=1)]
         if chunk.empty:
             continue
 
-        # Dédupliquer par arrondi à 3 décimales (~100m)
-        chunk["rlat"] = chunk["stop_lat"].round(3)
-        chunk["rlon"] = chunk["stop_lon"].round(3)
-        chunk = chunk.drop_duplicates(subset=["rlat", "rlon"])
-
-        # Convertir en cartésien pour requête KDTree
+        # Requête KDTree
         rlat_r = np.radians(chunk["rlat"].values)
         rlon_r = np.radians(chunk["rlon"].values)
         xs_q = R * np.cos(rlat_r) * np.cos(rlon_r)
         ys_q = R * np.cos(rlat_r) * np.sin(rlon_r)
         zs_q = R * np.sin(rlat_r)
-
         _, idxs = tree.query(np.column_stack([xs_q, ys_q, zs_q]))
 
-        # Accumulation par commune
         for i, (rlat, rlon) in enumerate(zip(chunk["rlat"].values, chunk["rlon"].values)):
             comm_idx = idxs[i]
             if comm_idx not in commune_stops:
                 commune_stops[comm_idx] = set()
             commune_stops[comm_idx].add((rlat, rlon))
-
-        total_uniques += len(chunk)
-        if total_lignes % (CHUNK_SIZE * 5) == 0:
-            print(f"  → {total_lignes:,} lignes traitées, {total_uniques:,} arrêts uniques assignés...")
-
-    print(f"  → Total : {total_lignes:,} lignes, {total_uniques:,} arrêts uniques (avant dédup globale)")
+        total_assignes += len(chunk)
 
     # Compter par commune
     result = {}
-    total_final = 0
     for idx, stops in commune_stops.items():
         result[codes[idx]] = len(stops)
-        total_final += len(stops)
-    print(f"  → {total_final:,} arrêts uniques assignés à {len(result)} communes")
+
+    print(f"  → {total_assignes:,} arrêts qualifiés assignés à {len(result):,} communes")
     return result
 
 
 async def run():
-    print("=== Import arrêts TC nationaux (transport.data.gouv.fr) ===\n")
+    print("=== Import arrêts TC avec filtre fréquence (transport.data.gouv.fr) ===\n")
     await init_db()
 
-    # 1. Charger les communes
+    # 1. Récupérer l'URL dynamiquement
+    tc_url = await get_tc_url()
+
+    # 2. Charger les communes
     async with async_session() as session:
         result = await session.execute(text("""
             SELECT c.code_insee, c.latitude, c.longitude
@@ -155,42 +235,41 @@ async def run():
     comm_lons = np.array([r[2] for r in communes_data])
     print(f"  {len(codes)} communes chargées")
 
-    # 2. Télécharger vers fichier temp
+    # 3. Télécharger vers fichier temp
     with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, prefix="tc_arrets_") as tmp:
         tmp_path = tmp.name
 
     try:
-        await telecharger_arrets(tmp_path)
+        await telecharger_arrets(tmp_path, tc_url)
 
-        # 3. Compter les arrêts par commune
-        print("\nTraitement des arrêts par commune...")
+        # 4. Compter les arrêts qualifiés par commune (2 passes)
         nb_arrets = compter_arrets_par_commune(tmp_path, codes, comm_lats, comm_lons)
 
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
-            print("  → Fichier temporaire supprimé")
+            print("\n  → Fichier temporaire supprimé")
 
-    # Stats
+    # Stats finales
     counts = np.array([nb_arrets.get(c, 0) for c in codes])
     communes_avec_tc = (counts > 0).sum()
-    print(f"\n  Communes avec >=1 arrêt TC : {communes_avec_tc:,} / {len(codes):,}")
+    print(f"\n  Communes avec >=1 arrêt qualifié : {communes_avec_tc:,} / {len(codes):,}")
     print(f"  Médiane (avec TC) : {np.median(counts[counts > 0]):.0f} arrêts")
     print(f"  P90 : {np.percentile(counts, 90):.0f}, max : {np.max(counts):.0f}")
 
-    # 4. Sauvegarder nb_arrets_tc
+    # 5. Sauvegarder nb_arrets_tc
     print("\nSauvegarde nb_arrets_tc...")
     async with async_session() as session:
         for i in range(0, len(codes), 5000):
-            batch = codes[i:i+5000]
+            batch = codes[i:i + 5000]
             for code in batch:
                 await session.execute(text(
                     "UPDATE scores SET nb_arrets_tc = :n WHERE code_insee = :c"
                 ), {"n": nb_arrets.get(code, 0), "c": code})
             await session.commit()
-            print(f"  → {min(i+5000, len(codes))}/{len(codes)}")
+            print(f"  → {min(i + 5000, len(codes))}/{len(codes)}")
 
-    # 5. Recalculer score_transports = 0.5 * score_gare + 0.5 * score_TC
+    # 6. Recalculer score_transports = 0.5 * score_gare + 0.5 * score_TC
     print("\nRecalcul score_transports composite (gare + TC)...")
     async with async_session() as session:
         result = await session.execute(text("""
@@ -203,7 +282,6 @@ async def run():
     dist_arr = np.array([float(r[1]) if r[1] is not None and float(r[1]) >= 0 else np.nan for r in score_rows])
     tc_arr = np.array([int(r[2]) if r[2] is not None else 0 for r in score_rows])
 
-    # Séries valides pour le calcul de percentile
     serie_dist = pd.Series(dist_arr[~np.isnan(dist_arr)])
     serie_tc = pd.Series(tc_arr.astype(float))
 
@@ -216,7 +294,6 @@ async def run():
         for n in tc_arr
     ])
 
-    # Composite
     final_scores = np.full(len(codes_s), -1.0)
     for i in range(len(codes_s)):
         sg, st = scores_gare[i], scores_tc[i]
@@ -231,19 +308,18 @@ async def run():
     print(f"  Score transport médian : {np.median(final_scores[valid]):.1f}")
     print(f"  Communes avec score transport : {valid.sum():,}")
 
-    # Sauvegarder
     async with async_session() as session:
         for i in range(0, len(codes_s), 5000):
-            for j, code in enumerate(codes_s[i:i+5000]):
-                s = float(final_scores[i+j])
+            for j, code in enumerate(codes_s[i:i + 5000]):
+                s = float(final_scores[i + j])
                 if s >= 0:
                     await session.execute(text(
                         "UPDATE scores SET score_transports = :s WHERE code_insee = :c"
                     ), {"s": s, "c": code})
             await session.commit()
-            print(f"  → {min(i+5000, len(codes_s))}/{len(codes_s)} scores transports sauvegardés")
+            print(f"  → {min(i + 5000, len(codes_s))}/{len(codes_s)} scores transports sauvegardés")
 
-    # 6. Recalcul scores globaux
+    # 7. Recalcul scores globaux
     print("\nRecalcul scores globaux...")
     async with async_session() as session:
         result = await session.execute(text("""
