@@ -150,7 +150,7 @@ export default function MapView({
       if (initialZoom < POLYGON_ZOOM) circleLayer.addTo(map)
 
       // Chargement progressif des communes (4 passes par population)
-      fetch('/api/map?limit=50000')
+      fetch('/communes-map.json')
         .then(r => r.json())
         .then(communes => {
           const passes = [
