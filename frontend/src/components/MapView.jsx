@@ -246,13 +246,12 @@ export default function MapView({
           debounceTimer = setTimeout(chargerIris, 200)
           setIrisMode(true); setPolyMode(false)
         } else if (zoom >= POLYGON_ZOOM) {
-          // Mode polygones communes
+          // Mode intermédiaire — pas de polygones communes en statique, cercles maintenus
           if (map.hasLayer(irisLayer)) { irisLayer.removeFrom(map); irisLayer.clearLayers(); lastIrisBbox.current = '' }
-          if (map.hasLayer(circleLayer)) circleLayer.removeFrom(map)
-          if (!map.hasLayer(communePolyLayer)) communePolyLayer.addTo(map)
-          clearTimeout(debounceTimer)
-          debounceTimer = setTimeout(chargerCommunePoly, 200)
-          setIrisMode(false); setPolyMode(true)
+          if (!map.hasLayer(circleLayer)) circleLayer.addTo(map)
+          const z = zoom
+          circleMarkersRef.current.forEach(({ circle, commune }) => circle.setRadius(getRadius(commune.population, z)))
+          setIrisMode(false); setPolyMode(false)
         } else {
           // Mode cercles — toujours préchargés, affichage instantané
           if (map.hasLayer(irisLayer)) { irisLayer.removeFrom(map); irisLayer.clearLayers(); lastIrisBbox.current = '' }
