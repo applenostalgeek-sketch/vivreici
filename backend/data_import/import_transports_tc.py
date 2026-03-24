@@ -4,20 +4,25 @@ Import arrêts de transport en commun avec filtre de fréquence.
 Source : transport.data.gouv.fr — fichier national agrégé des arrêts (~437 Mo, ~25M lignes)
 Dataset : https://www.data.gouv.fr/fr/datasets/arrets-de-transport-en-france/
 
-Méthode (v2 — filtre occurrence) :
+Méthode (v2 — filtre occurrence + seuil distance adaptatif) :
 - Le CSV contient les arrêts de TOUS les opérateurs français concaténés.
 - Un même arrêt physique apparaît 1× pour un car scolaire, 10-50× pour un arrêt de métro/RER.
-- Passe 1 : comptage des occurrences brutes par position arrondie à 100m
-- Filtre : ne garder que les positions avec >= MIN_OCCURRENCES occurrences
-  → élimine automatiquement cars scolaires et lignes interurbaines peu fréquentes
-- Passe 2 : assignation des arrêts filtrés aux communes (KDTree centroïde)
-- Score TC = percentile du nb d'arrêts qualifiés par commune
-- Score transport final = 0.5 × score_gare + 0.5 × score_TC
 
-Seuil MIN_OCCURRENCES = 3 (tunable) :
-- Car scolaire / ligne hebdomadaire : 1-2 occurrences → filtré
-- Bus périurbain / ligne régulière : 3-10 occurrences → conservé
-- Arrêt urbain / RER / Métro : 10-50+ occurrences → conservé
+Filtre 1 — Fréquence (MIN_OCCURRENCES = 3) :
+- Passe 1 : comptage des occurrences brutes par position arrondie à 100m
+- Ne garder que les positions avec >= MIN_OCCURRENCES occurrences
+  → élimine automatiquement cars scolaires et lignes interurbaines peu fréquentes
+
+Filtre 2 — Distance adaptative (rayon de Voronoi) :
+- Chaque arrêt est assigné à la commune au centroïde le plus proche (KDTree)
+- Mais : un arrêt à 4km du centroïde d'une petite commune peut être sur une commune voisine
+- Solution : pour chaque commune, max_dist = 0.5 × distance au voisin le plus proche
+  (= rayon de Voronoi approximatif), plafonné entre 1km et 5km
+- Un arrêt assigné à une commune mais trop loin de son centroïde est rejeté
+  → élimine les misassignations aux frontières (petites communes péri-urbaines)
+
+Score TC = percentile du nb d'arrêts qualifiés par commune
+Score transport final = 0.5 × score_gare + 0.5 × score_TC
 
 Ce script doit être lancé APRÈS import_transports.py (qui calcule distance_gare_km).
 """
@@ -118,6 +123,17 @@ def compter_arrets_par_commune(
     tree = cKDTree(np.column_stack([xs, ys, zs]))
     print(f"  → KDTree construit sur {len(codes)} communes")
 
+    # Rayon de Voronoi adaptatif par commune :
+    # max_dist = 0.5 × distance au voisin le plus proche, plafonné entre 1km et 5km
+    # → rejette les arrêts sur la commune voisine assignés par erreur au centroïde le plus proche
+    self_dists, _ = tree.query(np.column_stack([xs, ys, zs]), k=2)
+    nn_dists_sphere = self_dists[:, 1]  # distance au 2e plus proche = voisin immédiat
+    nn_dists_km = nn_dists_sphere * 6371.0
+    max_dists_km = np.clip(nn_dists_km * 0.5, 1.0, 5.0)
+    max_dists_sphere = max_dists_km / 6371.0
+    print(f"  → Rayon Voronoi : médiane={np.median(max_dists_km):.1f}km, "
+          f"min={max_dists_km.min():.1f}km, max={max_dists_km.max():.1f}km")
+
     csv_params = dict(
         chunksize=CHUNK_SIZE,
         usecols=["stop_lat", "stop_lon"],
@@ -167,6 +183,9 @@ def compter_arrets_par_commune(
     qualifying: set = {pos for pos, cnt in position_counts.items() if cnt >= min_occurrences}
 
     # ── Passe 2 : assignation aux communes ───────────────────────────────────
+    # Préparer un DataFrame des positions qualifiées pour le merge vectorisé
+    qualifying_df = pd.DataFrame(list(qualifying), columns=["rlat", "rlon"])
+
     print(f"\nPasse 2/2 : assignation des arrêts qualifiés aux communes...")
     commune_stops: dict[int, set] = {}
     total_assignes = 0
@@ -182,9 +201,9 @@ def compter_arrets_par_commune(
         chunk["rlat"] = chunk["stop_lat"].round(3)
         chunk["rlon"] = chunk["stop_lon"].round(3)
 
-        # Déduplication dans le chunk puis filtre sur les positions qualifiées
+        # Déduplication dans le chunk + filtre vectorisé via merge
         chunk = chunk.drop_duplicates(subset=["rlat", "rlon"])
-        chunk = chunk[chunk.apply(lambda r: (r["rlat"], r["rlon"]) in qualifying, axis=1)]
+        chunk = chunk.merge(qualifying_df, on=["rlat", "rlon"], how="inner")
         if chunk.empty:
             continue
 
@@ -194,14 +213,18 @@ def compter_arrets_par_commune(
         xs_q = R * np.cos(rlat_r) * np.cos(rlon_r)
         ys_q = R * np.cos(rlat_r) * np.sin(rlon_r)
         zs_q = R * np.sin(rlat_r)
-        _, idxs = tree.query(np.column_stack([xs_q, ys_q, zs_q]))
+        dists, idxs = tree.query(np.column_stack([xs_q, ys_q, zs_q]))
 
+        n_chunk_assigned = 0
         for i, (rlat, rlon) in enumerate(zip(chunk["rlat"].values, chunk["rlon"].values)):
             comm_idx = idxs[i]
-            if comm_idx not in commune_stops:
-                commune_stops[comm_idx] = set()
-            commune_stops[comm_idx].add((rlat, rlon))
-        total_assignes += len(chunk)
+            # Filtre Voronoi : rejeter si l'arrêt est trop loin du centroïde de la commune assignée
+            if dists[i] <= max_dists_sphere[comm_idx]:
+                if comm_idx not in commune_stops:
+                    commune_stops[comm_idx] = set()
+                commune_stops[comm_idx].add((rlat, rlon))
+                n_chunk_assigned += 1
+        total_assignes += n_chunk_assigned
 
     # Compter par commune
     result = {}
