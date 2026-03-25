@@ -213,11 +213,14 @@ export default function MapView({
           if (bboxKey !== lastIrisBbox.current) return  // vue changée pendant le fetch
           irisLayer.clearLayers()
           const letters = activeLettersRef.current
-          for (const result of fetches) {
+          const communesAvecIris = new Set()
+          for (let i = 0; i < fetches.length; i++) {
+            const result = fetches[i]
             if (result.status !== 'fulfilled' || !result.value) continue
             for (const feature of result.value.features) {
               const z = feature.properties
               if (!z.lettre || !letters.has(z.lettre)) continue
+              communesAvecIris.add(codes[i])
               const color = SCORE_COLORS[z.lettre] || '#9CA3AF'
               const typeLabel = z.typ_iris === 'H' ? 'Quartier résidentiel' : z.typ_iris === 'A' ? "Zone d'activité" : z.typ_iris === 'D' ? 'Zone diversifiée' : ''
               const tooltip = makeTooltip(z.nom, z.lettre, z.score_global, z.population) + (typeLabel ? `<br/><em>${typeLabel}</em>` : '')
@@ -226,6 +229,21 @@ export default function MapView({
               layer.on('click', () => navigate(`/iris/${z.code_iris}?tab=detail`))
               layer.addTo(irisLayer)
             }
+          }
+          // Fallback : communes sans polygone IRIS visible → cercle cliquable vers la fiche commune
+          for (let i = 0; i < codes.length; i++) {
+            const code = codes[i]
+            if (communesAvecIris.has(code)) continue
+            const commune = visibles.find(c => c.code_insee === code)
+            if (!commune || !commune.lettre || !letters.has(commune.lettre)) continue
+            const color = SCORE_COLORS[commune.lettre] || '#9CA3AF'
+            const circle = L.circleMarker([commune.latitude, commune.longitude], {
+              radius: 8, fillColor: color,
+              color: 'rgba(255,255,255,0.6)', weight: 1, opacity: 0.9, fillOpacity: 0.75,
+            })
+            circle.bindTooltip(makeTooltip(commune.nom, commune.lettre, commune.score_global, commune.population), { sticky: true })
+            circle.on('click', () => navigate(`/commune/${code}?tab=detail`))
+            circle.addTo(irisLayer)
           }
         } catch {}
       }
