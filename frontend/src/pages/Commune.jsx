@@ -394,8 +394,13 @@ export default function Commune() {
                               <span className="text-sm flex-shrink-0 mt-0.5">{g.icon}</span>
                               <div className="flex flex-wrap gap-1">
                                 {shown.map((l, i) => {
-                                  const label = l.short || (l.nom.length > 18 ? l.nom.slice(0, 17) + '…' : l.nom) || '?'
-                                  const tooltip = l.nom && l.nom !== label ? l.nom : ''
+                                  // Rail (type 2) : afficher le trajet (nom), pas le code mission SNCF (short)
+                                  // Metro/tram/bus : short est le vrai nom commercial ("6", "T2", "30")
+                                  const raw = l.type_code === 2
+                                    ? (l.nom || l.short || '?')
+                                    : (l.short || l.nom || '?')
+                                  const label = raw.length > 22 ? raw.slice(0, 21) + '…' : raw
+                                  const tooltip = l.nom && l.nom.length > 22 ? l.nom : ''
                                   return (
                                     <span
                                       key={i}
