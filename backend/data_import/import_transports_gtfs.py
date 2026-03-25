@@ -65,12 +65,31 @@ async def get_all_gtfs_feeds() -> list[dict]:
 
 # ── Parsing d'un zip GTFS (CPU-bound, lancé dans un thread) ───────────────────
 
+# Poids par route_type GTFS — reflète l'utilité réelle pour les déplacements quotidiens
+# Métro/RER >> Tram > Bus urbain = Bus interurbain (on ne peut pas distinguer depuis route_type seul)
+ROUTE_WEIGHTS = {
+    0: 3.0,   # Tram / tramway
+    1: 5.0,   # Métro / subway
+    2: 4.0,   # Rail (RER, TER, Intercités)
+    3: 1.0,   # Bus (urbain et interurbain — même type, pas de distinction possible)
+    4: 1.5,   # Ferry
+    5: 2.0,   # Cable tram
+    6: 1.5,   # Aerial lift
+    7: 1.5,   # Funicular
+    11: 2.0,  # Trolleybus
+    12: 3.0,  # Monorail
+}
+DEFAULT_WEIGHT = 1.0
+
+
 def parse_zip(zip_bytes: bytes) -> dict:
     """
-    Parse un zip GTFS et retourne {(rlat, rlon): nb_trips_uniques}.
-    Utilise csv.reader natif — pas de pandas — pour la vitesse.
-    Compte tous les trips (pas de filtre calendar) : bonne approximation
-    car les ratios entre communes sont conservés.
+    Parse un zip GTFS et retourne {(rlat, rlon): trips_pondérés}.
+    Utilise csv.reader natif pour la vitesse.
+
+    Pondération par route_type :
+    - Métro × 5, Rail/RER × 4, Tram × 3, Bus × 1
+    - Un arrêt de métro parisien (500 trips × 5) >> un car rural (30 trips × 1)
     """
     try:
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
@@ -85,14 +104,52 @@ def parse_zip(zip_bytes: bytes) -> dict:
             stops_f = find("stops.txt")
             times_f = find("stop_times.txt")
             trips_f = find("trips.txt")
+            routes_f = find("routes.txt")
             if not stops_f or not times_f:
                 return {}
 
-            # trips.txt → trip_id → route_type (optionnel, on skip)
-            # On n'a pas besoin de trips.txt si on ne filtre pas par calendar
+            # routes.txt → route_id → poids
+            route_weight: dict[str, float] = {}
+            if routes_f:
+                with zf.open(routes_f) as f:
+                    reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace"))
+                    header = next(reader, None)
+                    if header:
+                        header = [h.strip() for h in header]
+                        try:
+                            ri = header.index("route_id")
+                            rti = header.index("route_type")
+                            for row in reader:
+                                if len(row) > max(ri, rti):
+                                    try:
+                                        rt = int(row[rti].strip())
+                                        route_weight[row[ri]] = ROUTE_WEIGHTS.get(rt, DEFAULT_WEIGHT)
+                                    except ValueError:
+                                        pass
+                        except ValueError:
+                            pass
 
-            # stop_times.txt → compter les trip_ids uniques par stop_id
-            stop_trips: dict[str, set] = defaultdict(set)
+            # trips.txt → trip_id → poids (via route_id)
+            trip_weight: dict[str, float] = {}
+            if trips_f and route_weight:
+                with zf.open(trips_f) as f:
+                    reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace"))
+                    header = next(reader, None)
+                    if header:
+                        header = [h.strip() for h in header]
+                        try:
+                            tid_i = header.index("trip_id")
+                            rid_i = header.index("route_id")
+                            for row in reader:
+                                if len(row) > max(tid_i, rid_i):
+                                    w = route_weight.get(row[rid_i], DEFAULT_WEIGHT)
+                                    trip_weight[row[tid_i]] = w
+                        except ValueError:
+                            pass
+
+            # stop_times.txt → {stop_id: {trip_id: weight}} pour déduplication correcte
+            # On utilise dict[trip_id → weight] par stop pour sommer les poids sans doublon
+            stop_trips: dict[str, dict[str, float]] = defaultdict(dict)
             with zf.open(times_f) as f:
                 reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace"))
                 header = next(reader, None)
@@ -106,9 +163,12 @@ def parse_zip(zip_bytes: bytes) -> dict:
                     return {}
                 for row in reader:
                     if len(row) > max(si, ti):
-                        stop_trips[row[si]].add(row[ti])
+                        tid = row[ti]
+                        sid = row[si]
+                        if tid not in stop_trips[sid]:
+                            stop_trips[sid][tid] = trip_weight.get(tid, DEFAULT_WEIGHT)
 
-            # stops.txt → lat/lon par stop_id
+            # stops.txt → lat/lon par stop_id → résultat pondéré
             result: dict = {}
             with zf.open(stops_f) as f:
                 reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace"))
@@ -133,12 +193,12 @@ def parse_zip(zip_bytes: bytes) -> dict:
                     if not (LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX):
                         continue
                     sid = row[id_i]
-                    trips = len(stop_trips.get(sid, set()))
-                    if trips == 0:
+                    weighted = sum(stop_trips.get(sid, {}).values())
+                    if weighted == 0:
                         continue
                     pos = (round(lat, 3), round(lon, 3))
-                    if trips > result.get(pos, 0):
-                        result[pos] = trips
+                    if weighted > result.get(pos, 0):
+                        result[pos] = weighted
             return result
     except Exception:
         return {}
