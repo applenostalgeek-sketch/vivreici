@@ -265,21 +265,6 @@ export default function Commune() {
                       <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">Filosofi 2021 INSEE</div>
                     </div>
                   )}
-                  {data.score.donnees_brutes.distance_gare_km != null && (
-                    <div className="bg-paper rounded-xl p-4">
-                      <div className="font-mono text-xl font-bold text-ink">
-                        {data.score.donnees_brutes.distance_gare_km < 1
-                          ? `< 1 km`
-                          : `${data.score.donnees_brutes.distance_gare_km} km`}
-                      </div>
-                      <div className="text-xs text-ink-light mt-1">
-                        {data.score.donnees_brutes.nb_gares > 0
-                          ? 'gare voyageurs sur place'
-                          : 'gare voyageurs la plus proche'}
-                      </div>
-                      <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">SNCF data.gouv.fr</div>
-                    </div>
-                  )}
                 </div>
 
               </div>
