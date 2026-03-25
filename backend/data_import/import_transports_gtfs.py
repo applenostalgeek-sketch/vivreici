@@ -406,13 +406,20 @@ async def run():
         if not routes_set:
             return None
         by_type: dict[int, list] = defaultdict(list)
-        # Déduplication par (type, short) — élimine aller/retour encodés séparément
-        seen: set = set()
+        # Déduplication par (type, short) ET par (type, nom) pour le rail
+        # — élimine aller/retour et variantes de service encodés séparément dans GTFS SNCF
+        seen_short: set = set()
+        seen_nom: set = set()
         for (rtype, short, long_) in routes_set:
             key = (rtype, short)
-            if key in seen:
+            if key in seen_short:
                 continue
-            seen.add(key)
+            seen_short.add(key)
+            if rtype == 2 and long_:  # rail uniquement : dédupliquer aussi par nom
+                nom_key = (rtype, long_)
+                if nom_key in seen_nom:
+                    continue
+                seen_nom.add(nom_key)
             label, icon = TYPE_LABELS.get(rtype, ("Bus", "🚌"))
             by_type[rtype].append({"type_code": rtype, "type_label": label,
                                    "icon": icon, "short": short, "nom": long_})
