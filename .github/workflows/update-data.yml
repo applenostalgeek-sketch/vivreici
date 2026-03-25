@@ -62,12 +62,13 @@ jobs:
               python -m backend.data_import.import_filosofi_iris
               ;;
             transport)
-              # Etape 1 : distance gares SNCF (rapide)
+              # Etape 1 : distance gares SNCF (rapide, ~1min)
               python -m backend.data_import.import_transports
-              # Etape 2 : arrets TC avec filtre frequence (MIN_OCCURRENCES=3, ~30min)
-              # Filtre les cars scolaires et lignes hebdomadaires (apparaissent 1-2x dans le dataset)
-              # Conserve les arrets reguliers (bus urbain, RER, metro = 3-50+ occurrences)
-              python -m backend.data_import.import_transports_tc
+              # Etape 2 : score TC via GTFS national (456 feeds, ~15min)
+              # Compte les trips/jour reels par arret (pas juste la presence)
+              # Bouglainval (car rural) : ~30 trips/jour vs Paris : ~70K trips/jour
+              # Source : transport.data.gouv.fr, 30 telechargements concurrents
+              python -m backend.data_import.import_transports_gtfs
               ;;
             environnement)
               python -m backend.data_import.import_environnement
@@ -91,7 +92,7 @@ jobs:
               python -m backend.data_import.import_dvf_historique
               python -m backend.data_import.import_filosofi
               python -m backend.data_import.import_transports
-              python -m backend.data_import.import_transports_tc
+              python -m backend.data_import.import_transports_gtfs
               python -m backend.data_import.import_demographie
               python -m backend.data_import.import_environnement
               python -m backend.data_import.import_apl
