@@ -226,7 +226,11 @@ export default function MapView({
               const tooltip = makeTooltip(z.nom, z.lettre, z.score_global, z.population) + (typeLabel ? `<br/><em>${typeLabel}</em>` : '')
               const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 1.2, opacity: 0.7, fillOpacity: 0.55 } })
               layer.bindTooltip(tooltip, { sticky: true })
-              layer.on('click', () => navigate(`/iris/${z.code_iris}?tab=detail`))
+              // Type Z = commune entière (pas de subdivision IRIS) → fiche commune directement
+              const dest = z.typ_iris === 'Z'
+                ? `/commune/${z.code_iris.slice(0, 5)}?tab=detail`
+                : `/iris/${z.code_iris}?tab=detail`
+              layer.on('click', () => navigate(dest))
               layer.addTo(irisLayer)
             }
           }
