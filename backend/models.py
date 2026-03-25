@@ -93,6 +93,8 @@ class Score(Base):
     prix_m2_median_2022: Mapped[float] = mapped_column(Float, default=0)  # Pour calcul tendance
     nb_gares: Mapped[int] = mapped_column(Integer, default=0)
     distance_gare_km: Mapped[float] = mapped_column(Float, default=-1)
+    nom_gare: Mapped[str] = mapped_column(Text, nullable=True)
+    transport_detail: Mapped[str] = mapped_column(Text, nullable=True)
     evolution_population_5ans: Mapped[float] = mapped_column(Float, default=0)
     revenu_median: Mapped[float] = mapped_column(Float, default=0)
     taux_pauvrete: Mapped[float] = mapped_column(Float, default=0)

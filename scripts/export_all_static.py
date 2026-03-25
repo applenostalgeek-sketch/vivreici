@@ -72,6 +72,7 @@ def main():
                nb_equipements, apl_medecins, taux_criminalite,
                prix_m2_median, prix_m2_median_2022, nb_gares, distance_gare_km,
                nb_arrets_tc, equipements_detail, poi_detail,
+               nom_gare, transport_detail,
                evolution_population_5ans, taux_pauvrete, updated_at
         FROM scores
     """).fetchall()
@@ -101,6 +102,8 @@ def main():
                 'prix_m2_median_2022':   s['prix_m2_median_2022'],
                 'nb_gares':              s['nb_gares'] or 0,
                 'distance_gare_km':      s['distance_gare_km'] if s['distance_gare_km'] and s['distance_gare_km'] >= 0 else None,
+                'nom_gare':              s['nom_gare'] if s['nom_gare'] else None,
+                'transport_detail':      safe_json(s['transport_detail']),
                 'equipements_detail':    safe_json(s['equipements_detail']),
                 'poi_detail':            safe_json(s['poi_detail']),
                 'evolution_population_5ans': s['evolution_population_5ans'],

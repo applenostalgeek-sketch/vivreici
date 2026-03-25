@@ -345,6 +345,82 @@ export default function Commune() {
                 )
               })()}
 
+              {/* Section Transports en commun */}
+              {(() => {
+                const db = data.score.donnees_brutes
+                const td = db.transport_detail
+                const lignes = td?.lignes || []
+                const nomGare = db.nom_gare
+                const distGare = db.distance_gare_km
+
+                if (!nomGare && !lignes.length) return null
+
+                const TYPE_ORDER = [1, 2, 0, 11, 12, 4, 3]
+                const groups = {}
+                for (const l of lignes) {
+                  const k = l.type_code
+                  if (!groups[k]) groups[k] = { type_code: k, type_label: l.type_label, icon: l.icon, lignes: [] }
+                  groups[k].lignes.push(l)
+                }
+                const orderedGroups = TYPE_ORDER
+                  .filter(k => groups[k])
+                  .map(k => groups[k])
+
+                return (
+                  <div className="bg-white rounded-2xl border border-border p-6">
+                    <h2 className="font-display text-xl text-ink mb-4">Transports en commun</h2>
+
+                    {nomGare && (
+                      <div className="flex items-center gap-2 mb-4 text-sm flex-wrap">
+                        <span>🚉</span>
+                        <span className="text-ink-light">Gare la plus proche :</span>
+                        <span className="font-medium text-ink">{nomGare}</span>
+                        {distGare !== null && distGare !== undefined && (
+                          <span className="text-ink-muted">
+                            ({distGare < 1 ? '< 1 km' : `${distGare} km`})
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {orderedGroups.length > 0 && (
+                      <div className="space-y-2">
+                        {orderedGroups.map(g => {
+                          const MAX_BUS = 5
+                          const shown = g.type_code === 3 ? g.lignes.slice(0, MAX_BUS) : g.lignes
+                          const extra = g.type_code === 3 ? g.lignes.length - MAX_BUS : 0
+                          return (
+                            <div key={g.type_label} className="flex items-start gap-2">
+                              <span className="text-sm flex-shrink-0 mt-0.5">{g.icon}</span>
+                              <div className="flex flex-wrap gap-1">
+                                {shown.map((l, i) => (
+                                  <span
+                                    key={i}
+                                    title={l.nom || ''}
+                                    className="text-xs bg-surface-alt text-ink-light px-2 py-0.5 rounded-full border border-border cursor-default"
+                                  >
+                                    {l.short || l.nom || '?'}
+                                  </span>
+                                ))}
+                                {extra > 0 && (
+                                  <span className="text-xs text-ink-muted px-2 py-0.5">+{extra} lignes</span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {!orderedGroups.length && (
+                      <p className="text-sm text-ink-light">Aucune ligne de transport en commun connue.</p>
+                    )}
+
+                    <p className="text-xs text-ink-muted mt-4">Source : GTFS transport.data.gouv.fr</p>
+                  </div>
+                )
+              })()}
+
             </div>
           )}
 

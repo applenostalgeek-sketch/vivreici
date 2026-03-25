@@ -30,11 +30,12 @@ CHUNK_SIZE = 2000  # nb communes par chunk dans la matrice haversine
 
 def haversine_min_distance(lats_q, lons_q, lats_ref, lons_ref):
     """
-    Pour chaque point query, retourne la distance min en km vers les points ref.
+    Pour chaque point query, retourne (distance min en km, index gare la plus proche).
     Traitement par chunks pour limiter la RAM.
     """
     R = 6371.0
     min_dists = np.full(len(lats_q), np.inf)
+    min_idxs = np.zeros(len(lats_q), dtype=int)
 
     for start in range(0, len(lats_q), CHUNK_SIZE):
         end = min(start + CHUNK_SIZE, len(lats_q))
@@ -49,8 +50,9 @@ def haversine_min_distance(lats_q, lons_q, lats_ref, lons_ref):
              + np.cos(lat_q[:, None]) * np.cos(lat_r[None, :]) * np.sin(dlon / 2) ** 2)
         dist = R * 2 * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
         min_dists[start:end] = dist.min(axis=1)
+        min_idxs[start:end] = dist.argmin(axis=1)
 
-    return min_dists
+    return min_dists, min_idxs
 
 
 async def telecharger_gares() -> pd.DataFrame:
@@ -103,7 +105,8 @@ async def run():
 
     # 3. Calcul haversine : distance minimale à une gare voyageurs
     print(f"  Calcul haversine ({len(communes)} communes × {len(df_gares)} gares)...")
-    dist_km = haversine_min_distance(lats, lons, gare_lats, gare_lons)
+    dist_km, argmin_idxs = haversine_min_distance(lats, lons, gare_lats, gare_lons)
+    libelles = df_gares["LIBELLE"].values
 
     # Déterminer si la commune a une gare sur son territoire (distance < 3 km)
     # Note : on n'a pas le code INSEE dans ce dataset, on utilise un seuil de proximité
@@ -114,8 +117,8 @@ async def run():
     print(f"  Distance p90 (sans gare proche)     : {np.percentile(dist_km[~has_gare], 90):.1f} km")
     print(f"  Distance max                         : {np.max(dist_km):.1f} km")
 
-    # 4. Mettre à jour nb_gares (1 si gare < 3km) + distance_gare_km
-    print("Mise à jour nb_gares et distance_gare_km en base...")
+    # 4. Mettre à jour nb_gares, distance_gare_km, nom_gare
+    print("Mise à jour nb_gares, distance_gare_km et nom_gare en base...")
     async with async_session() as session:
         await session.execute(text("UPDATE scores SET nb_gares = 0, distance_gare_km = -1"))
         await session.commit()
@@ -123,10 +126,12 @@ async def run():
             batch_codes = codes[i:i+5000]
             batch_has = has_gare[i:i+5000]
             batch_dist = dist_km[i:i+5000]
+            batch_idxs = argmin_idxs[i:i+5000]
             for j, code in enumerate(batch_codes):
+                nom = str(libelles[batch_idxs[j]])
                 await session.execute(text(
-                    "UPDATE scores SET nb_gares = :g, distance_gare_km = :d WHERE code_insee = :c"
-                ), {"g": int(batch_has[j]), "d": round(float(batch_dist[j]), 1), "c": code})
+                    "UPDATE scores SET nb_gares = :g, distance_gare_km = :d, nom_gare = :n WHERE code_insee = :c"
+                ), {"g": int(batch_has[j]), "d": round(float(batch_dist[j]), 1), "n": nom, "c": code})
             await session.commit()
     print(f"  {nb_gares_communes} communes marquées avec gare (<3 km)")
 

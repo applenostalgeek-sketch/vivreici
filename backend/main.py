@@ -81,6 +81,8 @@ def score_to_dict(score: Score) -> dict:
             "prix_m2_median_2022": score.prix_m2_median_2022 if score.prix_m2_median_2022 else None,
             "nb_gares": score.nb_gares if score.nb_gares else 0,
             "distance_gare_km": score.distance_gare_km if score.distance_gare_km and score.distance_gare_km >= 0 else None,
+            "nom_gare": score.nom_gare if score.nom_gare else None,
+            "transport_detail": json.loads(score.transport_detail) if score.transport_detail else None,
             "equipements_detail": json.loads(score.equipements_detail) if score.equipements_detail else None,
             "poi_detail": json.loads(score.poi_detail) if score.poi_detail else None,
             "evolution_population_5ans": score.evolution_population_5ans,

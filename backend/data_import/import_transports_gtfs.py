@@ -13,6 +13,7 @@ Optimisations :
 import asyncio
 import csv
 import io
+import json
 import os
 import sys
 import zipfile
@@ -82,10 +83,12 @@ ROUTE_WEIGHTS = {
 DEFAULT_WEIGHT = 1.0
 
 
-def parse_zip(zip_bytes: bytes) -> dict:
+def parse_zip(zip_bytes: bytes) -> tuple[dict, dict]:
     """
-    Parse un zip GTFS et retourne {(rlat, rlon): trips_pondérés}.
-    Utilise csv.reader natif pour la vitesse.
+    Parse un zip GTFS.
+    Retourne :
+    - trips_dict  : {(rlat, rlon): trips_pondérés}
+    - routes_dict : {(rlat, rlon): set de (type_code, short_name, long_name)}
 
     Pondération par route_type :
     - Métro × 5, Rail/RER × 4, Tram × 3, Bus × 1
@@ -106,10 +109,11 @@ def parse_zip(zip_bytes: bytes) -> dict:
             trips_f = find("trips.txt")
             routes_f = find("routes.txt")
             if not stops_f or not times_f:
-                return {}
+                return {}, {}
 
-            # routes.txt → route_id → poids
+            # routes.txt → route_id → poids + métadonnées (type, short, long)
             route_weight: dict[str, float] = {}
+            route_meta: dict[str, tuple] = {}  # route_id → (type_code, short_name, long_name)
             if routes_f:
                 with zf.open(routes_f) as f:
                     reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace"))
@@ -117,21 +121,27 @@ def parse_zip(zip_bytes: bytes) -> dict:
                     if header:
                         header = [h.strip() for h in header]
                         try:
-                            ri = header.index("route_id")
+                            ri  = header.index("route_id")
                             rti = header.index("route_type")
+                            sni = header.index("route_short_name") if "route_short_name" in header else -1
+                            lni = header.index("route_long_name")  if "route_long_name"  in header else -1
                             for row in reader:
                                 if len(row) > max(ri, rti):
                                     try:
-                                        rt = int(row[rti].strip())
+                                        rt    = int(row[rti].strip())
+                                        short = row[sni].strip()[:30] if sni >= 0 and len(row) > sni else ""
+                                        long_ = row[lni].strip()[:80] if lni >= 0 and len(row) > lni else ""
                                         route_weight[row[ri]] = ROUTE_WEIGHTS.get(rt, DEFAULT_WEIGHT)
+                                        route_meta[row[ri]]   = (rt, short, long_)
                                     except ValueError:
                                         pass
                         except ValueError:
                             pass
 
-            # trips.txt → trip_id → poids (via route_id)
+            # trips.txt → trip_id → poids + route_id
             trip_weight: dict[str, float] = {}
-            if trips_f and route_weight:
+            trip_route_id: dict[str, str] = {}
+            if trips_f:
                 with zf.open(trips_f) as f:
                     reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace"))
                     header = next(reader, None)
@@ -142,46 +152,52 @@ def parse_zip(zip_bytes: bytes) -> dict:
                             rid_i = header.index("route_id")
                             for row in reader:
                                 if len(row) > max(tid_i, rid_i):
-                                    w = route_weight.get(row[rid_i], DEFAULT_WEIGHT)
-                                    trip_weight[row[tid_i]] = w
+                                    rid = row[rid_i]
+                                    tid = row[tid_i]
+                                    trip_weight[tid]   = route_weight.get(rid, DEFAULT_WEIGHT)
+                                    trip_route_id[tid] = rid
                         except ValueError:
                             pass
 
-            # stop_times.txt → {stop_id: {trip_id: weight}} pour déduplication correcte
-            # On utilise dict[trip_id → weight] par stop pour sommer les poids sans doublon
+            # stop_times.txt → {stop_id: {trip_id: weight}} + {stop_id: set(route_id)}
             stop_trips: dict[str, dict[str, float]] = defaultdict(dict)
+            stop_route_ids: dict[str, set] = defaultdict(set)
             with zf.open(times_f) as f:
                 reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace"))
                 header = next(reader, None)
                 if not header:
-                    return {}
+                    return {}, {}
                 header = [h.strip() for h in header]
                 try:
                     si = header.index("stop_id")
                     ti = header.index("trip_id")
                 except ValueError:
-                    return {}
+                    return {}, {}
                 for row in reader:
                     if len(row) > max(si, ti):
                         tid = row[ti]
                         sid = row[si]
                         if tid not in stop_trips[sid]:
                             stop_trips[sid][tid] = trip_weight.get(tid, DEFAULT_WEIGHT)
+                        rid = trip_route_id.get(tid)
+                        if rid and rid in route_meta:
+                            stop_route_ids[sid].add(rid)
 
-            # stops.txt → lat/lon par stop_id → résultat pondéré
+            # stops.txt → lat/lon → résultat pondéré + routes
             result: dict = {}
+            routes_result: dict = {}
             with zf.open(stops_f) as f:
                 reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace"))
                 header = next(reader, None)
                 if not header:
-                    return {}
+                    return {}, {}
                 header = [h.strip() for h in header]
                 try:
                     id_i  = header.index("stop_id")
                     lat_i = header.index("stop_lat")
                     lon_i = header.index("stop_lon")
                 except ValueError:
-                    return {}
+                    return {}, {}
                 for row in reader:
                     if len(row) <= max(id_i, lat_i, lon_i):
                         continue
@@ -199,9 +215,14 @@ def parse_zip(zip_bytes: bytes) -> dict:
                     pos = (round(lat, 3), round(lon, 3))
                     if weighted > result.get(pos, 0):
                         result[pos] = weighted
-            return result
+                    # Lignes desservant cette position
+                    if sid in stop_route_ids:
+                        if pos not in routes_result:
+                            routes_result[pos] = set()
+                        routes_result[pos].update(route_meta[rid] for rid in stop_route_ids[sid])
+            return result, routes_result
     except Exception:
-        return {}
+        return {}, {}
 
 
 # ── Pipeline async download + thread parse ────────────────────────────────────
@@ -225,8 +246,9 @@ async def run():
 
     feeds = await get_all_gtfs_feeds()
 
-    # Résultat global : (rlat, rlon) → max trips
+    # Résultat global : (rlat, rlon) → max trips + union des routes par position
     global_trips: dict = {}
+    global_routes: dict = {}  # (rlat, rlon) → set de (type_code, short, long)
     counters = {"ok": 0, "err": 0, "empty": 0, "done": 0, "total": len(feeds)}
 
     sem = asyncio.Semaphore(MAX_CONCURRENT)
@@ -251,9 +273,9 @@ async def run():
 
         # Parsing dans un thread (libère l'event loop)
         try:
-            stops = await loop.run_in_executor(executor, parse_zip, data)
+            stops, routes = await loop.run_in_executor(executor, parse_zip, data)
         except Exception:
-            stops = {}
+            stops, routes = {}, {}
 
         if not stops:
             counters["empty"] += 1
@@ -261,6 +283,10 @@ async def run():
             for pos, trips in stops.items():
                 if trips > global_trips.get(pos, 0):
                     global_trips[pos] = trips
+            for pos, rset in routes.items():
+                if pos not in global_routes:
+                    global_routes[pos] = set()
+                global_routes[pos].update(rset)
             counters["ok"] += 1
 
         counters["done"] += 1
@@ -300,11 +326,14 @@ async def run():
     dists, idxs = tree.query(np.column_stack([xs_q, ys_q, zs_q]))
 
     commune_trips: dict[str, int] = {}
+    commune_routes: dict[str, set] = defaultdict(set)
     for i, pos in enumerate(positions):
         ci = idxs[i]
         if dists[i] <= max_dists_sphere[ci]:
             c = codes[ci]
             commune_trips[c] = commune_trips.get(c, 0) + global_trips[pos]
+            if pos in global_routes:
+                commune_routes[c].update(global_routes[pos])
 
     trips_arr = np.array([commune_trips.get(c, 0) for c in codes])
     nonzero = trips_arr[trips_arr > 0]
@@ -359,15 +388,54 @@ async def run():
             print(f"    {label:<20} : {final_scores[i]:.1f} "
                   f"(trips={commune_trips.get(code,0):,}, gare={scores_gare[i]:.1f})")
 
+    # Construire transport_detail JSON par commune
+    TYPE_LABELS = {
+        0:  ("Tram",       "🚊"),
+        1:  ("Métro",      "🚇"),
+        2:  ("RER / TER",  "🚆"),
+        3:  ("Bus",        "🚌"),
+        4:  ("Ferry",      "⛴"),
+        11: ("Trolleybus", "🚎"),
+        12: ("Monorail",   "🚝"),
+    }
+    TYPE_ORDER = [1, 2, 0, 11, 12, 4, 3]  # priorité d'affichage (bus en dernier)
+    MAX_BUS = 10  # max lignes de bus stockées par commune
+
+    def build_transport_detail(routes_set: set) -> str | None:
+        if not routes_set:
+            return None
+        by_type: dict[int, list] = defaultdict(list)
+        for (rtype, short, long_) in routes_set:
+            label, icon = TYPE_LABELS.get(rtype, ("Bus", "🚌"))
+            by_type[rtype].append({"type_code": rtype, "type_label": label,
+                                   "icon": icon, "short": short, "nom": long_})
+        lignes = []
+        for rtype in TYPE_ORDER:
+            if rtype not in by_type:
+                continue
+            items = sorted(by_type[rtype], key=lambda x: x["short"])
+            if rtype == 3:
+                items = items[:MAX_BUS]
+            lignes.extend(items)
+        # autres types non listés dans TYPE_ORDER
+        for rtype, items in by_type.items():
+            if rtype not in TYPE_ORDER:
+                lignes.extend(sorted(items, key=lambda x: x["short"])[:5])
+        if not lignes:
+            return None
+        return json.dumps({"lignes": lignes}, ensure_ascii=False)
+
     # Sauvegarde DB
     print("\nSauvegarde en base...")
     async with async_session() as session:
         for i in range(0, len(codes_s), 5000):
             batch_codes = codes_s[i:i+5000]
             for j, code in enumerate(batch_codes):
+                td = build_transport_detail(commune_routes.get(code, set()))
                 await session.execute(text(
-                    "UPDATE scores SET nb_arrets_tc=:n, score_transports=:s WHERE code_insee=:c"
-                ), {"n": int(tc_arr[i+j]), "s": float(final_scores[i+j]) if final_scores[i+j] >= 0 else None, "c": code})
+                    "UPDATE scores SET nb_arrets_tc=:n, score_transports=:s, transport_detail=:td WHERE code_insee=:c"
+                ), {"n": int(tc_arr[i+j]), "s": float(final_scores[i+j]) if final_scores[i+j] >= 0 else None,
+                    "td": td, "c": code})
             await session.commit()
             print(f"  → {min(i+5000, len(codes_s))}/{len(codes_s)}")
 
