@@ -219,15 +219,20 @@ export default function MapView({
             if (result.status !== 'fulfilled' || !result.value) continue
             for (const feature of result.value.features) {
               const z = feature.properties
-              if (!z.lettre || !letters.has(z.lettre)) continue
+              // Pour les IRIS type Z (commune entière), utiliser le score commune
+              // pour la couleur — évite la discordance IRIS D vs commune A
+              const isZ = z.typ_iris === 'Z'
+              const commune = isZ ? visibles.find(c => c.code_insee === z.code_iris.slice(0, 5)) : null
+              const lettre = isZ ? (commune?.lettre || z.lettre) : z.lettre
+              const scoreGlobal = isZ ? (commune?.score_global ?? z.score_global) : z.score_global
+              if (!lettre || !letters.has(lettre)) continue
               communesAvecIris.add(codes[i])
-              const color = SCORE_COLORS[z.lettre] || '#9CA3AF'
+              const color = SCORE_COLORS[lettre] || '#9CA3AF'
               const typeLabel = z.typ_iris === 'H' ? 'Quartier résidentiel' : z.typ_iris === 'A' ? "Zone d'activité" : z.typ_iris === 'D' ? 'Zone diversifiée' : ''
-              const tooltip = makeTooltip(z.nom, z.lettre, z.score_global, z.population) + (typeLabel ? `<br/><em>${typeLabel}</em>` : '')
+              const tooltip = makeTooltip(z.nom, lettre, scoreGlobal, z.population || commune?.population) + (typeLabel ? `<br/><em>${typeLabel}</em>` : '')
               const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 1.2, opacity: 0.7, fillOpacity: 0.55 } })
               layer.bindTooltip(tooltip, { sticky: true })
-              // Type Z = commune entière (pas de subdivision IRIS) → fiche commune directement
-              const dest = z.typ_iris === 'Z'
+              const dest = isZ
                 ? `/commune/${z.code_iris.slice(0, 5)}?tab=detail`
                 : `/iris/${z.code_iris}?tab=detail`
               layer.on('click', () => navigate(dest))
