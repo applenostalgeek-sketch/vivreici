@@ -386,22 +386,26 @@ export default function Commune() {
                     {orderedGroups.length > 0 && (
                       <div className="space-y-2">
                         {orderedGroups.map(g => {
-                          const MAX_BUS = 5
-                          const shown = g.type_code === 3 ? g.lignes.slice(0, MAX_BUS) : g.lignes
-                          const extra = g.type_code === 3 ? g.lignes.length - MAX_BUS : 0
+                          const MAX_SHOWN_BUS = 5
+                          const shown = g.type_code === 3 ? g.lignes.slice(0, MAX_SHOWN_BUS) : g.lignes
+                          const extra = g.type_code === 3 ? Math.max(0, g.lignes.length - MAX_SHOWN_BUS) : 0
                           return (
                             <div key={g.type_label} className="flex items-start gap-2">
                               <span className="text-sm flex-shrink-0 mt-0.5">{g.icon}</span>
                               <div className="flex flex-wrap gap-1">
-                                {shown.map((l, i) => (
-                                  <span
-                                    key={i}
-                                    title={l.nom || ''}
-                                    className="text-xs bg-surface-alt text-ink-light px-2 py-0.5 rounded-full border border-border cursor-default"
-                                  >
-                                    {l.short || l.nom || '?'}
-                                  </span>
-                                ))}
+                                {shown.map((l, i) => {
+                                  const label = l.short || (l.nom.length > 18 ? l.nom.slice(0, 17) + '…' : l.nom) || '?'
+                                  const tooltip = l.nom && l.nom !== label ? l.nom : ''
+                                  return (
+                                    <span
+                                      key={i}
+                                      title={tooltip}
+                                      className="text-xs bg-surface-alt text-ink-light px-2 py-0.5 rounded-full border border-border cursor-default"
+                                    >
+                                      {label}
+                                    </span>
+                                  )
+                                })}
                                 {extra > 0 && (
                                   <span className="text-xs text-ink-muted px-2 py-0.5">+{extra} lignes</span>
                                 )}

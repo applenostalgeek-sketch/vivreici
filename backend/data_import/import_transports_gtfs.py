@@ -399,13 +399,20 @@ async def run():
         12: ("Monorail",   "🚝"),
     }
     TYPE_ORDER = [1, 2, 0, 11, 12, 4, 3]  # priorité d'affichage (bus en dernier)
-    MAX_BUS = 10  # max lignes de bus stockées par commune
+    MAX_BUS  = 10  # max lignes de bus stockées
+    MAX_RAIL = 6   # max lignes rail/RER/TER (évite les multiples variantes SNCF)
 
     def build_transport_detail(routes_set: set) -> str | None:
         if not routes_set:
             return None
         by_type: dict[int, list] = defaultdict(list)
+        # Déduplication par (type, short) — élimine aller/retour encodés séparément
+        seen: set = set()
         for (rtype, short, long_) in routes_set:
+            key = (rtype, short)
+            if key in seen:
+                continue
+            seen.add(key)
             label, icon = TYPE_LABELS.get(rtype, ("Bus", "🚌"))
             by_type[rtype].append({"type_code": rtype, "type_label": label,
                                    "icon": icon, "short": short, "nom": long_})
@@ -416,8 +423,9 @@ async def run():
             items = sorted(by_type[rtype], key=lambda x: x["short"])
             if rtype == 3:
                 items = items[:MAX_BUS]
+            elif rtype == 2:
+                items = items[:MAX_RAIL]
             lignes.extend(items)
-        # autres types non listés dans TYPE_ORDER
         for rtype, items in by_type.items():
             if rtype not in TYPE_ORDER:
                 lignes.extend(sorted(items, key=lambda x: x["short"])[:5])
