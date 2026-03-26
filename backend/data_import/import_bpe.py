@@ -260,16 +260,13 @@ async def run():
                     taux_criminalite, prix_m2_median, evolution_population_5ans,
                     equipements_detail, updated_at
                 ) VALUES (
-                    :code, :sg, :lettre, :seq, :sante, -1, -1, -1, -1, -1,
-                    :nb_eq, :nb_med, :nb_gares, :nb_cat, 0, 0, 0,
+                    :code, :sg, :lettre, :seq, -1, -1, -1, -1, -1, -1,
+                    :nb_eq, 0, :nb_gares, :nb_cat, 0, 0, 0,
                     :detail, CURRENT_TIMESTAMP
                 )
                 ON CONFLICT(code_insee) DO UPDATE SET
                     score_equipements       = excluded.score_equipements,
-                    score_sante             = excluded.score_sante,
                     nb_equipements          = excluded.nb_equipements,
-                    nb_medecins_pour_10000  = excluded.nb_medecins_pour_10000,
-                    nb_gares                = excluded.nb_gares,
                     equipements_detail      = excluded.equipements_detail,
                     updated_at              = excluded.updated_at
             """), {
@@ -277,9 +274,7 @@ async def run():
                 "sg":      float(row.get("score_global", 50)),
                 "lettre":  row.get("lettre", "C"),
                 "seq":     float(row.get("score_equipements", -1)),
-                "sante":   float(row.get("score_sante", -1)),
                 "nb_eq":   int(row.get("nb_equipements_total", 0)),
-                "nb_med":  float(row.get("medecins_pour_10000", 0)),
                 "nb_gares": int(row.get("nb_transports", 0)),
                 "nb_cat":  int(row.get("nb_categories", 1)),
                 "detail":  row.get("equipements_detail") or None,
