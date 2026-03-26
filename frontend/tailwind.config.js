@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Fraunces', 'Georgia', 'serif'],
+        display: ['Bricolage Grotesque', 'system-ui', 'sans-serif'],
         sans: ['Epilogue', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
@@ -20,7 +20,7 @@ export default {
         score: {
           A: '#16A34A',
           B: '#166534',
-          C: '#64748B',
+          C: '#2563EB',
           D: '#CA8A04',
           E: '#DC2626',
         },

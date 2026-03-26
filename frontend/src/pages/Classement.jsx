@@ -266,7 +266,7 @@ export default function Classement() {
         )}
       </main>
       <footer className="border-t border-border px-6 py-6 text-center text-xs text-ink-light">
-        VivreIci · BPE 2024 INSEE · DVF 2024 DGFiP · SSMSI 2024 · APL 2023 DREES · CEREMA 2023 · Filosofi 2021 INSEE ·{' '}
+        lebonquartier · BPE 2024 INSEE · DVF 2024 DGFiP · SSMSI 2024 · APL 2023 DREES · CEREMA 2023 · Filosofi 2021 INSEE ·{' '}
         <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
       </footer>
     </div>

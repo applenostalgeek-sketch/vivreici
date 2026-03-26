@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 export function usePageMeta({ title, description }) {
   useEffect(() => {
     // Title
-    document.title = title ? `${title} | VivreIci` : 'VivreIci — Le score de qualité de vie des communes françaises'
+    document.title = title ? `${title} | lebonquartier` : 'lebonquartier — Le score de qualité de vie des communes françaises'
 
     // Meta description
     let metaDesc = document.querySelector('meta[name="description"]')

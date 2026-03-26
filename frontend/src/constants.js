@@ -6,7 +6,7 @@ export const SCORE_COLORS = {
 
 // Couleurs de la barre de progression (légèrement plus claires que SCORE_COLORS)
 export const SCORE_BAR_COLORS = {
-  A: '#22c55e', B: '#16a34a', C: '#3b82f6', D: '#ca8a04', E: '#dc2626',
+  A: '#22c55e', B: '#16a34a', C: '#94a3b8', D: '#ca8a04', E: '#dc2626',
 }
 
 export const SCORE_LABELS = {

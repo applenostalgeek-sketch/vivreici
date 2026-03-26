@@ -46,8 +46,8 @@ export default function Home() {
       <div className="hero-dark relative overflow-hidden">
         {/* Nav transparente sur fond sombre */}
         <nav className="flex items-center justify-between px-6 py-5 relative z-10">
-          <span className="font-display font-bold text-xl text-paper">
-            Vivre<span className="text-score-A">Ici</span>
+          <span className="font-display text-xl tracking-tight text-paper">
+            <span className="font-light">le</span><span className="font-extrabold text-score-A">bon</span><span className="font-light">quartier</span>
           </span>
           <a href="/carte" className="text-sm font-medium text-paper/50 hover:text-paper/90 transition-colors">
             Carte
@@ -163,7 +163,7 @@ export default function Home() {
 
       {/* ── FOOTER ──────────────────────────────────────────────────── */}
       <footer className="border-t border-border px-6 py-5 text-center text-xs text-ink-light">
-        VivreIci · open data français · 2024 ·{' '}
+        lebonquartier · open data français · 2024 ·{' '}
         <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
         {' · '}
         <a href="/carte" className="underline hover:text-ink">Carte</a>

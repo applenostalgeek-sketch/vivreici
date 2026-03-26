@@ -12,8 +12,8 @@ import SearchBar from './SearchBar.jsx'
 export default function Nav({ searchBar = true, searchPlaceholder = 'Commune ou adresse…', children }) {
   return (
     <nav className="flex items-center justify-between px-6 py-4 border-b border-border bg-white/60 backdrop-blur-sm sticky top-0 z-40">
-      <Link to="/" className="font-display font-bold text-xl text-ink">
-        Vivre<span className="text-score-A">Ici</span>
+      <Link to="/" className="font-display text-xl tracking-tight text-ink">
+        <span className="font-light">le</span><span className="font-extrabold text-score-A">bon</span><span className="font-light">quartier</span>
       </Link>
 
       {searchBar && (
