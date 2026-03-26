@@ -1,12 +1,12 @@
 // ─── Score system ─────────────────────────────────────────────────────────────
 
 export const SCORE_COLORS = {
-  A: '#16A34A', B: '#166534', C: '#2563EB', D: '#CA8A04', E: '#DC2626',
+  A: '#16A34A', B: '#65A30D', C: '#CA8A04', D: '#EA580C', E: '#DC2626',
 }
 
 // Couleurs de la barre de progression (légèrement plus claires que SCORE_COLORS)
 export const SCORE_BAR_COLORS = {
-  A: '#22c55e', B: '#16a34a', C: '#94a3b8', D: '#ca8a04', E: '#dc2626',
+  A: '#22c55e', B: '#84cc16', C: '#eab308', D: '#f97316', E: '#ef4444',
 }
 
 export const SCORE_LABELS = {

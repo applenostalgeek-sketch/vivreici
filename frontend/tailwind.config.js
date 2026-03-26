@@ -19,9 +19,9 @@ export default {
         surface: '#FFFFFF',
         score: {
           A: '#16A34A',
-          B: '#166534',
-          C: '#2563EB',
-          D: '#CA8A04',
+          B: '#65A30D',
+          C: '#CA8A04',
+          D: '#EA580C',
           E: '#DC2626',
         },
       },

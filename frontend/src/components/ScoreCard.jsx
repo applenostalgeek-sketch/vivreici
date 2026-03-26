@@ -1,8 +1,8 @@
 const SCORE_CONFIG = {
   A: { label: 'Excellent', bg: 'bg-score-A', text: 'text-score-A', light: 'bg-green-50', border: 'border-green-200' },
-  B: { label: 'Bien', bg: 'bg-score-B', text: 'text-score-B', light: 'bg-green-50', border: 'border-green-100' },
-  C: { label: 'Moyen', bg: 'bg-score-C', text: 'text-score-C', light: 'bg-yellow-50', border: 'border-yellow-200' },
-  D: { label: 'Faible', bg: 'bg-score-D', text: 'text-score-D', light: 'bg-orange-50', border: 'border-orange-200' },
+  B: { label: 'Bien', bg: 'bg-score-B', text: 'text-score-B', light: 'bg-lime-50', border: 'border-lime-200' },
+  C: { label: 'Moyen', bg: 'bg-score-C', text: 'text-score-C', light: 'bg-amber-50', border: 'border-amber-200' },
+  D: { label: 'Faible', bg: 'bg-score-D', text: 'text-score-D', light: 'bg-orange-50', border: 'border-orange-300' },
   E: { label: 'Insuffisant', bg: 'bg-score-E', text: 'text-score-E', light: 'bg-red-50', border: 'border-red-200' },
 }
 
