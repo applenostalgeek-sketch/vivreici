@@ -83,14 +83,19 @@ async def run():
     print("Agrégation par IRIS...")
     df_iris = aggreger_par_iris(df_bpe)
 
-    # Charger toutes les zones IRIS depuis la base pour le scoring national
+    # Charger toutes les zones IRIS + poi_detail existant (issu des imports OSM/FINESS/édu)
     async with async_session() as session:
         result = await session.execute(text(
             "SELECT code_iris, population FROM iris_zones"
         ))
         df_zones = pd.DataFrame(result.fetchall(), columns=["code_iris", "population"])
 
-    print(f"  → {len(df_zones):,} zones IRIS en base")
+        result_poi = await session.execute(text(
+            "SELECT code_iris, poi_detail FROM iris_scores WHERE poi_detail IS NOT NULL"
+        ))
+        poi_by_iris = {r[0]: r[1] for r in result_poi.fetchall()}
+
+    print(f"  → {len(df_zones):,} zones IRIS en base, {len(poi_by_iris):,} avec poi_detail")
 
     df = df_zones.merge(df_iris, on="code_iris", how="left")
     df["nb_equipements"]    = df["nb_equipements"].fillna(0).astype(int)
@@ -98,17 +103,26 @@ async def run():
     df["population"]        = df["population"].fillna(0).astype(int)
     df["equipements_detail"] = df["equipements_detail"].where(df["equipements_detail"].notna(), None)
 
-    # Scoring par percentile national sur les IRIS avec données BPE.
-    # Les IRIS sont conçus pour avoir ~2000 habitants chacun → compter direct sans normalisation.
-    # Pour nb_medecins : les zones sans médecin couvrent les IRIS ruraux ; les grandes villes
-    # ont plusieurs IRIS pour couvrir les mêmes médecins → nb_medecins direct acceptable.
-    print("Calcul des scores percentiles IRIS...")
+    # Score équipements = union des types BPE + poi_detail (présence, pas quantité)
+    # Raison : BPE géocode par adresse administrative → décalages aux frontières IRIS.
+    # poi_detail (OSM + sources GPS) est plus précis à cette échelle.
+    # L'union garantit qu'aucun IRIS ne perd un équipement qu'il a dans une source.
+    # Ex : Montretout 2 (Saint-Cloud) — BPE: {urgences, collège}, poi: {boulangerie, supermarché, boucherie}
+    #      → union = 5 types uniques (au lieu de 2 en BPE seul)
+    def nb_types_union(row):
+        bpe_types = set(json.loads(row["equipements_detail"]).keys()) if row["equipements_detail"] else set()
+        poi_json = poi_by_iris.get(row["code_iris"])
+        poi_types = set(json.loads(poi_json).keys()) if poi_json else set()
+        return len(bpe_types | poi_types)
 
-    df_avec = df[df["nb_equipements"] > 0]  # Score uniquement les IRIS avec équipements
-    serie_eq  = df_avec["nb_equipements"].astype(float)
+    print("Calcul des scores percentiles IRIS (union BPE + poi_detail)...")
+    df["nb_types_union"] = df.apply(nb_types_union, axis=1)
+
+    df_avec = df[df["nb_types_union"] > 0]
+    serie_eq  = df_avec["nb_types_union"].astype(float)
     serie_med = df_avec["nb_medecins"].astype(float)
 
-    df["score_equipements"] = df["nb_equipements"].astype(float).apply(
+    df["score_equipements"] = df["nb_types_union"].astype(float).apply(
         lambda x: percentile_to_score(x, serie_eq, "direct") if x > 0 else -1
     )
     df["score_sante"] = df["nb_medecins"].astype(float).apply(
