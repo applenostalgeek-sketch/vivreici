@@ -336,6 +336,14 @@ def main():
         for i, r in enumerate(complete):
             rang_iris[r['code_iris']] = (i + 1, len(complete))
 
+    def score_to_lettre(s):
+        if s is None: return None
+        if s >= 80: return 'A'
+        if s >= 60: return 'B'
+        if s >= 40: return 'C'
+        if s >= 20: return 'D'
+        return 'E'
+
     nb_iris_written = 0
     for code_iris, r in iris_map.items():
         s_global = r.get('score_global')
@@ -344,12 +352,33 @@ def main():
         def sub_iris(val):
             return val if val is not None and val >= 0 else None
 
+        # Fallback score_sante IRIS → commune
+        # L'accès aux soins ne respecte pas les frontières IRIS — un médecin à 200m
+        # dans l'IRIS voisin est autant accessible. L'APL est calculé au niveau commune.
+        sante_iris = sub_iris(r.get('score_sante'))
+        commune_score = scores_map.get(r['code_commune'])
+        if (sante_iris is None or sante_iris == 0) and commune_score:
+            sante_commune = commune_score.get('score_sante')
+            if sante_commune and sante_commune > 0:
+                sante_iris = round(sante_commune, 1)
+
+        # Recalcul score_global + lettre avec le fallback appliqué
+        sous_valides = [v for v in [
+            sub_iris(r.get('score_equipements')),
+            sante_iris,
+            sub_iris(r.get('score_immobilier')),
+            sub_iris(r.get('score_revenus')),
+        ] if v is not None]
+        if sous_valides and (sante_iris != sub_iris(r.get('score_sante'))):
+            s_global = round(sum(sous_valides) / len(sous_valides), 1)
+            lettre = score_to_lettre(s_global) if (r.get('nb_categories_scorees') or 0) >= 2 else None
+
         score_obj = {
             'score_global': s_global,
             'lettre': lettre,
             'sous_scores': {
                 'equipements': sub_iris(r.get('score_equipements')),
-                'sante':       sub_iris(r.get('score_sante')),
+                'sante':       sante_iris,
                 'immobilier':  sub_iris(r.get('score_immobilier')),
                 'revenus':     sub_iris(r.get('score_revenus')),
             },
