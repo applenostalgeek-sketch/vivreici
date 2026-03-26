@@ -185,7 +185,22 @@ export default function Commune() {
                   {Object.entries(CATEGORY_META).map(([key, meta]) => {
                     const val = data.score.sous_scores[key]
                     if (val == null) return null
-                    return <ScoreBar key={key} value={val} label={meta.label} icon={meta.icon} desc={meta.desc} />
+                    const brutes = data.score.donnees_brutes || {}
+
+                    let desc = meta.desc
+                    if (key === 'securite' && brutes.taux_criminalite != null) {
+                      const taux = brutes.taux_criminalite.toFixed(1)
+                      desc = val < 35
+                        ? `${taux} infractions/1 000 hab · les zones denses ont mécaniquement plus d'infractions déclarées`
+                        : `${taux} infractions/1 000 hab`
+                    } else if (key === 'immobilier' && brutes.prix_m2_median > 0) {
+                      const prix = Math.round(brutes.prix_m2_median).toLocaleString('fr-FR')
+                      desc = `${prix} €/m² médian · score élevé = prix abordable vs médiane nationale`
+                    } else if (key === 'sante' && brutes.apl_medecins > 0) {
+                      desc = `${brutes.apl_medecins.toFixed(1)} consultations/an/hab accessibles (DREES 2023)`
+                    }
+
+                    return <ScoreBar key={key} value={val} label={meta.label} icon={meta.icon} desc={desc} />
                   })}
                 </div>
                 {data.score.nb_categories_scorees < 6 && (
