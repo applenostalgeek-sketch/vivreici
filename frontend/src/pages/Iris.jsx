@@ -301,13 +301,6 @@ export default function Iris() {
                   })()}
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {data.score.donnees_brutes.nb_equipements > 0 && (
-                      <div className="bg-paper rounded-xl p-4">
-                        <div className="font-mono text-xl font-bold text-ink">{data.score.donnees_brutes.nb_equipements}</div>
-                        <div className="text-xs text-ink-light mt-1">équipements recensés</div>
-                        <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">BPE 2024 INSEE</div>
-                      </div>
-                    )}
                     {data.score.donnees_brutes.medecins_pour_10000 > 0 && (
                       <div className="bg-paper rounded-xl p-4">
                         <div className="font-mono text-xl font-bold text-ink">{data.score.donnees_brutes.medecins_pour_10000.toFixed(1)}</div>
