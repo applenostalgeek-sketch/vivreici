@@ -448,6 +448,7 @@ def main():
                 else:
                     continue
             _corr = iris_corrected.get(r['code_iris'], {})
+            lettre_map = _corr.get('lettre', iris_lettre(r))
             features.append({
                 'type': 'Feature',
                 'geometry': geo,
@@ -456,8 +457,9 @@ def main():
                     'nom':          r['nom'],
                     'typ_iris':     r['typ_iris'],
                     'score_global': _corr.get('score_global', r.get('score_global')),
-                    'lettre':       _corr.get('lettre', iris_lettre(r)),
+                    'lettre':       lettre_map,
                     'population':   r['population'],
+                    'incomplet':    lettre_map is None,
                 },
             })
         if features:

@@ -225,8 +225,19 @@ export default function MapView({
               const commune = isZ ? visibles.find(c => c.code_insee === z.code_iris.slice(0, 5)) : null
               const lettre = isZ ? (commune?.lettre || z.lettre) : z.lettre
               const scoreGlobal = isZ ? (commune?.score_global ?? z.score_global) : z.score_global
-              if (!lettre || !letters.has(lettre)) continue
               communesAvecIris.add(codes[i])
+
+              // IRIS sans données suffisantes → gris neutre, hors filtre A-E
+              if (z.incomplet || !lettre) {
+                const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.5, fillOpacity: 0.3 } })
+                layer.bindTooltip(`<strong>${z.nom}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
+                const dest = isZ ? `/commune/${z.code_iris.slice(0, 5)}?tab=detail` : `/iris/${z.code_iris}?tab=detail`
+                layer.on('click', () => navigate(dest))
+                layer.addTo(irisLayer)
+                continue
+              }
+
+              if (!letters.has(lettre)) continue
               const color = SCORE_COLORS[lettre] || '#9CA3AF'
               const typeLabel = z.typ_iris === 'H' ? 'Quartier résidentiel' : z.typ_iris === 'A' ? "Zone d'activité" : z.typ_iris === 'D' ? 'Zone diversifiée' : ''
               const tooltip = makeTooltip(z.nom, lettre, scoreGlobal, z.population || commune?.population) + (typeLabel ? `<br/><em>${typeLabel}</em>` : '')
