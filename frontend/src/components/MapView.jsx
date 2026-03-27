@@ -239,21 +239,9 @@ export default function MapView({
               layer.addTo(irisLayer)
             }
           }
-          // Fallback : communes sans polygone IRIS visible → cercle cliquable vers la fiche commune
-          for (let i = 0; i < codes.length; i++) {
-            const code = codes[i]
-            if (communesAvecIris.has(code)) continue
-            const commune = visibles.find(c => c.code_insee === code)
-            if (!commune || !commune.lettre || !letters.has(commune.lettre)) continue
-            const color = SCORE_COLORS[commune.lettre] || '#9CA3AF'
-            const circle = L.circleMarker([commune.latitude, commune.longitude], {
-              radius: 8, fillColor: color,
-              color: 'rgba(255,255,255,0.6)', weight: 1, opacity: 0.9, fillOpacity: 0.75,
-            })
-            circle.bindTooltip(makeTooltip(commune.nom, commune.lettre, commune.score_global, commune.population), { sticky: true })
-            circle.on('click', () => navigate(`/commune/${code}?tab=detail`))
-            circle.addTo(irisLayer)
-          }
+          // Communes sans polygone IRIS (trop petites pour être découpées par l'IGN)
+          // → non affichées en mode IRIS pour éviter les cercles incongrus au milieu des polygones
+          // → toujours visibles en mode cercles (zoom < IRIS_ZOOM_THRESHOLD) et via la recherche
         } catch {}
       }
       chargerIrisRef.current = chargerIris
