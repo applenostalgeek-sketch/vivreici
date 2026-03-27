@@ -229,7 +229,7 @@ export default function MapView({
 
               // IRIS sans données suffisantes → gris neutre, hors filtre A-E
               if (z.incomplet || !lettre) {
-                const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.5, fillOpacity: 0.3 } })
+                const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.65, fillOpacity: 0.45 } })
                 layer.bindTooltip(`<strong>${z.nom}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
                 const dest = isZ ? `/commune/${z.code_iris.slice(0, 5)}?tab=detail` : `/iris/${z.code_iris}?tab=detail`
                 layer.on('click', () => navigate(dest))
