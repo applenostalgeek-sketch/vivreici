@@ -70,7 +70,8 @@ def calculer_score_global(sous_scores: dict[str, float]) -> tuple[float, str, in
         for cat in scores_disponibles
     )
 
-    return round(score, 1), score_to_lettre(score), len(scores_disponibles)
+    score_rounded = round(score, 1)
+    return score_rounded, score_to_lettre(score_rounded), len(scores_disponibles)
 
 
 def normaliser_par_habitant(valeur: float, population: int, pour: int = 1000) -> float:
