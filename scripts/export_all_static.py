@@ -28,6 +28,7 @@ def mkdirs():
     (DATA / 'communes').mkdir(parents=True, exist_ok=True)
     (DATA / 'iris').mkdir(parents=True, exist_ok=True)
     (DATA / 'iris-map').mkdir(parents=True, exist_ok=True)
+    (DATA / 'communes-geo').mkdir(parents=True, exist_ok=True)
 
 def dump(path, obj):
     with open(path, 'w', encoding='utf-8') as f:
@@ -452,6 +453,127 @@ def main():
             nb_map_written += 1
 
     print(f"  Total: {nb_map_written} fichiers iris-map")
+
+    # ── 11. communes-geo par département (polygones carte intermédiaire) ──────
+    print("Génération fichiers communes-geo...")
+    geo_rows = conn.execute("""
+        SELECT code_insee, departement, geometry
+        FROM communes
+        WHERE geometry IS NOT NULL AND departement IS NOT NULL
+    """).fetchall()
+
+    geo_by_dept = {}
+    for row in geo_rows:
+        dept = row['departement']
+        geo = safe_json(row['geometry'])
+        if not geo:
+            continue
+        if dept not in geo_by_dept:
+            geo_by_dept[dept] = []
+        geo_by_dept[dept].append((row['code_insee'], geo))
+
+    nb_geo_written = 0
+    for dept, items in sorted(geo_by_dept.items()):
+        features = []
+        for code, geo in items:
+            c = communes_map.get(code)
+            s = scores_map.get(code)
+            nom = c['nom'] if c else code
+            pop = (c['population'] if c else 0) or 0
+            if s and (s.get('nb_categories_scorees') or 0) >= 3:
+                lettre = lettre_ok(s['lettre'])
+                score_global = round(s['score_global'], 1) if s['score_global'] is not None else None
+            else:
+                lettre = None
+                score_global = None
+            features.append({
+                'type': 'Feature',
+                'geometry': geo,
+                'properties': {
+                    'code_insee':   code,
+                    'nom':          nom,
+                    'lettre':       lettre,
+                    'score_global': score_global,
+                    'population':   pop,
+                },
+            })
+        if features:
+            dump(DATA / 'communes-geo' / f'{dept}.json', {
+                'type': 'FeatureCollection',
+                'features': features,
+            })
+            nb_geo_written += 1
+            if nb_geo_written % 20 == 0:
+                print(f"  {nb_geo_written} départements écrits...")
+
+    print(f"  Total: {nb_geo_written} fichiers communes-geo")
+
+    # ── 12. departements.json (union communes par dept, score médian) ─────────
+    print("Génération departements.json...")
+    try:
+        from shapely.ops import unary_union
+        from shapely.geometry import shape, mapping
+        import numpy as np
+
+        # Grouper communes par dept
+        dept_geoms = {}   # dept → [shapely geom]
+        dept_codes = {}   # dept → [code_insee]
+        for row in geo_rows:
+            dept = row['departement']
+            geo = safe_json(row['geometry'])
+            if not geo or not dept:
+                continue
+            try:
+                geom = shape(geo)
+                if not geom.is_valid:
+                    geom = geom.buffer(0)
+                dept_geoms.setdefault(dept, []).append(geom)
+                dept_codes.setdefault(dept, []).append(row['code_insee'])
+            except Exception:
+                continue
+
+        dept_features = []
+        for dept in sorted(dept_geoms.keys()):
+            # Union + simplification pour affichage basse résolution
+            union = unary_union(dept_geoms[dept])
+            simplified = union.simplify(0.005, preserve_topology=True)
+            geo_out = mapping(simplified)
+
+            # Score médian du département
+            dept_scores = [
+                scores_map[c]['score_global']
+                for c in dept_codes[dept]
+                if c in scores_map
+                and (scores_map[c].get('nb_categories_scorees') or 0) >= 3
+                and scores_map[c]['score_global'] is not None
+            ]
+            if dept_scores:
+                median_score = float(np.median(dept_scores))
+                lettre = score_to_lettre(median_score)
+                nb_scorees = len(dept_scores)
+            else:
+                median_score = None
+                lettre = None
+                nb_scorees = 0
+
+            dept_features.append({
+                'type': 'Feature',
+                'geometry': geo_out,
+                'properties': {
+                    'dept':         dept,
+                    'lettre':       lettre_ok(lettre),
+                    'score_median': round(median_score, 1) if median_score is not None else None,
+                    'nb_scorees':   nb_scorees,
+                    'nb_communes':  len(dept_codes[dept]),
+                },
+            })
+
+        dump(DATA / 'departements.json', {'type': 'FeatureCollection', 'features': dept_features})
+        size_dept = os.path.getsize(DATA / 'departements.json')
+        print(f"  departements.json: {len(dept_features)} départements, {size_dept // 1024} KB")
+    except Exception as e:
+        print(f"  ERREUR departements.json: {e}")
+
     conn.close()
 
     # Tailles

@@ -44,8 +44,10 @@ export default function MapView({
   const mapRef               = useRef(null)
   const leafletMap           = useRef(null)
   const leafletRef           = useRef(null)
-  const circleLayerRef       = useRef(null)   // cercles préchargés (zoom < POLYGON_ZOOM)
+  const circleLayerRef       = useRef(null)   // cercles préchargés (non utilisés — conservés pour rollback)
   const circleMarkersRef     = useRef([])      // [{circle, commune}] pour le filtre
+  const deptLayerRef         = useRef(null)   // polygones départements (zoom < POLYGON_ZOOM)
+  const renderDeptsRef       = useRef(null)   // fn pour rafraîchir filtre dept
   const communePolyLayerRef  = useRef(null)   // polygones communes (POLYGON_ZOOM <= zoom < IRIS)
   const irisLayerRef         = useRef(null)   // polygones IRIS (zoom >= IRIS_ZOOM_THRESHOLD)
   const markerLayerRef       = useRef(null)   // pin adresse
@@ -80,14 +82,8 @@ export default function MapView({
     } else if (zoom >= POLYGON_ZOOM) {
       lastCommunePolyBbox.current = ''; chargerCommunePolyRef.current?.()
     } else {
-      // Cercles : filtre immédiat en mémoire
-      circleMarkersRef.current.forEach(({ circle, commune }) => {
-        if (activeLetters.has(commune.lettre)) {
-          if (!map.hasLayer(circle)) circle.addTo(circleLayerRef.current)
-        } else {
-          if (circleLayerRef.current?.hasLayer(circle)) circleLayerRef.current.removeLayer(circle)
-        }
-      })
+      // Dept : rafraîchir le filtre depuis les données cachées
+      renderDeptsRef.current?.()
     }
   }, [activeLetters])
 
@@ -146,49 +142,94 @@ export default function MapView({
       }
 
       // ── Couche cercles (préchargés) ──────────────────────────────────────────
+      // Cercles conservés pour rollback — non affichés (remplacés par deptLayer)
       const circleLayer = L.layerGroup()
       circleLayerRef.current = circleLayer
-      if (initialZoom < POLYGON_ZOOM) circleLayer.addTo(map)
 
-      // Chargement progressif des communes (4 passes par population)
-      fetch('/communes-map.json')
-        .then(r => r.json())
-        .then(communes => {
-          const passes = [
-            communes.filter(c => c.population > 50000),
-            communes.filter(c => c.population > 10000 && c.population <= 50000),
-            communes.filter(c => c.population > 2000  && c.population <= 10000),
-            communes.filter(c => c.population <= 2000),
-          ]
-          function renderPass(i) {
-            if (i >= passes.length) return
-            const zoom = map.getZoom()
-            passes[i].forEach(c => {
-              if (!c.latitude || !c.longitude) return
-              const color = SCORE_COLORS[c.lettre] || '#9CA3AF'
-              const circle = L.circleMarker([c.latitude, c.longitude], {
-                radius: getRadius(c.population, zoom),
-                fillColor: color,
-                color: 'rgba(255,255,255,0.6)',
-                weight: 1, opacity: 0.9, fillOpacity: 0.75,
-                renderer,
-              })
-              circle.bindTooltip(makeTooltip(c.nom, c.lettre, c.score_global, c.population), { sticky: true })
-              circle.on('click', () => navigate(`/commune/${c.code_insee}?tab=detail`))
-              circleMarkersRef.current.push({ circle, commune: c })
-              if (activeLettersRef.current.has(c.lettre)) circle.addTo(circleLayer)
-            })
-            setTimeout(() => renderPass(i + 1), i === 0 ? 50 : 200)
+      // ── Couche polygones départements (zoom < POLYGON_ZOOM) ─────────────────
+      const deptLayer = L.layerGroup()
+      deptLayerRef.current = deptLayer
+      if (initialZoom < POLYGON_ZOOM) deptLayer.addTo(map)
+
+      let deptData = null
+
+      function renderDepts() {
+        if (!deptData) return
+        deptLayer.clearLayers()
+        const letters = activeLettersRef.current
+        for (const feature of deptData.features) {
+          const p = feature.properties
+          if (!p.lettre) {
+            const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.5, fillOpacity: 0.35 } })
+            layer.bindTooltip(`<strong>Dép. ${p.dept}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
+            layer.addTo(deptLayer)
+            continue
           }
-          renderPass(0)
-        })
-        .catch(() => {})
+          if (!letters.has(p.lettre)) continue
+          const color = SCORE_COLORS[p.lettre] || '#9CA3AF'
+          const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 1, opacity: 0.6, fillOpacity: 0.55 } })
+          layer.bindTooltip(`<strong>Dép. ${p.dept}</strong><br/>Score médian : ${Math.round(p.score_median)}/100 (${p.nb_scorees} communes)`, { sticky: true })
+          layer.addTo(deptLayer)
+        }
+      }
+      renderDeptsRef.current = renderDepts
 
-      // ── Couche polygones communes (désactivée — pas de géométrie en statique) ──
+      fetch('/data/departements.json').then(r => r.json()).then(fc => {
+        deptData = fc
+        if (map.hasLayer(deptLayer)) renderDepts()
+      }).catch(() => {})
+
+      // ── Couche polygones communes (zoom intermédiaire POLYGON_ZOOM..IRIS_ZOOM) ──
       const communePolyLayer = L.layerGroup()
       communePolyLayerRef.current = communePolyLayer
-      // Pas de polygones communes en mode statique — les cercles restent actifs
-      async function chargerCommunePoly() {}
+      const deptCache = {}  // dept → FeatureCollection (cache en mémoire)
+
+      async function chargerCommunePoly() {
+        const b = map.getBounds()
+        const bboxKey = [b.getSouth().toFixed(3), b.getNorth().toFixed(3), b.getWest().toFixed(3), b.getEast().toFixed(3)].join(',')
+        if (bboxKey === lastCommunePolyBbox.current) return
+        lastCommunePolyBbox.current = bboxKey
+        try {
+          const communes = await loadCommunes()
+          const visibles = communes.filter(c =>
+            c.latitude >= b.getSouth() && c.latitude <= b.getNorth() &&
+            c.longitude >= b.getWest() && c.longitude <= b.getEast()
+          )
+          const depts = [...new Set(visibles.map(c => c.departement).filter(Boolean))]
+          const toFetch = depts.filter(d => !deptCache[d])
+          if (toFetch.length > 0) {
+            const fetches = await Promise.allSettled(
+              toFetch.map(dept => fetch(`/data/communes-geo/${dept}.json`).then(r => r.ok ? r.json() : null))
+            )
+            if (bboxKey !== lastCommunePolyBbox.current) return
+            toFetch.forEach((dept, i) => {
+              if (fetches[i].status === 'fulfilled' && fetches[i].value) deptCache[dept] = fetches[i].value
+            })
+          } else if (bboxKey !== lastCommunePolyBbox.current) return
+          communePolyLayer.clearLayers()
+          const letters = activeLettersRef.current
+          for (const dept of depts) {
+            const fc = deptCache[dept]
+            if (!fc) continue
+            for (const feature of fc.features) {
+              const p = feature.properties
+              if (!p.lettre) {
+                const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 0.8, opacity: 0.5, fillOpacity: 0.35 } })
+                layer.bindTooltip(`<strong>${p.nom}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
+                layer.on('click', () => navigate(`/commune/${p.code_insee}?tab=detail`))
+                layer.addTo(communePolyLayer)
+                continue
+              }
+              if (!letters.has(p.lettre)) continue
+              const color = SCORE_COLORS[p.lettre] || '#9CA3AF'
+              const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 0.8, opacity: 0.6, fillOpacity: 0.55 } })
+              layer.bindTooltip(makeTooltip(p.nom, p.lettre, p.score_global, p.population), { sticky: true })
+              layer.on('click', () => navigate(`/commune/${p.code_insee}?tab=detail`))
+              layer.addTo(communePolyLayer)
+            }
+          }
+        } catch {}
+      }
       chargerCommunePolyRef.current = chargerCommunePoly
 
       // ── Couche IRIS (bbox) ────────────────────────────────────────────────────
@@ -265,27 +306,26 @@ export default function MapView({
 
         if (zoom >= IRIS_ZOOM_THRESHOLD) {
           // Mode IRIS
+          if (map.hasLayer(deptLayer)) deptLayer.removeFrom(map)
           if (map.hasLayer(communePolyLayer)) communePolyLayer.removeFrom(map)
-          if (map.hasLayer(circleLayer)) circleLayer.removeFrom(map)
           if (!map.hasLayer(irisLayer)) irisLayer.addTo(map)
           clearTimeout(debounceTimer)
           debounceTimer = setTimeout(chargerIris, 200)
           setIrisMode(true); setPolyMode(false)
         } else if (zoom >= POLYGON_ZOOM) {
-          // Mode intermédiaire — pas de polygones communes en statique, cercles maintenus
+          // Mode polygones communes
           if (map.hasLayer(irisLayer)) { irisLayer.removeFrom(map); irisLayer.clearLayers(); lastIrisBbox.current = '' }
-          if (!map.hasLayer(circleLayer)) circleLayer.addTo(map)
-          const z = zoom
-          circleMarkersRef.current.forEach(({ circle, commune }) => circle.setRadius(getRadius(commune.population, z)))
-          setIrisMode(false); setPolyMode(false)
+          if (map.hasLayer(deptLayer)) deptLayer.removeFrom(map)
+          if (!map.hasLayer(communePolyLayer)) communePolyLayer.addTo(map)
+          lastCommunePolyBbox.current = ''
+          clearTimeout(debounceTimer)
+          debounceTimer = setTimeout(chargerCommunePoly, 200)
+          setIrisMode(false); setPolyMode(true)
         } else {
-          // Mode cercles — toujours préchargés, affichage instantané
+          // Mode départements
           if (map.hasLayer(irisLayer)) { irisLayer.removeFrom(map); irisLayer.clearLayers(); lastIrisBbox.current = '' }
           if (map.hasLayer(communePolyLayer)) { communePolyLayer.removeFrom(map); communePolyLayer.clearLayers(); lastCommunePolyBbox.current = '' }
-          if (!map.hasLayer(circleLayer)) circleLayer.addTo(map)
-          // Adapter le radius des cercles au zoom
-          const z = zoom
-          circleMarkersRef.current.forEach(({ circle, commune }) => circle.setRadius(getRadius(commune.population, z)))
+          if (!map.hasLayer(deptLayer)) deptLayer.addTo(map)
           setIrisMode(false); setPolyMode(false)
         }
       }
@@ -300,16 +340,16 @@ export default function MapView({
 
       // Chargement initial selon le zoom de départ
       if (initialZoom >= IRIS_ZOOM_THRESHOLD) {
-        circleLayer.removeFrom(map)
         irisLayer.addTo(map)
         setIrisMode(true)
         chargerIris()
       } else if (initialZoom >= POLYGON_ZOOM) {
+        if (map.hasLayer(deptLayer)) deptLayer.removeFrom(map)
         communePolyLayer.addTo(map)
         setPolyMode(true)
         chargerCommunePoly()
       }
-      // else: zoom < POLYGON_ZOOM → cercles déjà configurés ci-dessus
+      // else: zoom < POLYGON_ZOOM → deptLayer déjà ajouté ci-dessus
     })
 
     return () => {
@@ -317,7 +357,7 @@ export default function MapView({
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mode = irisMode ? 'Quartiers (IRIS)' : polyMode ? 'Communes' : 'Communes'
+  const mode = irisMode ? 'Quartiers (IRIS)' : polyMode ? 'Communes' : 'Départements'
 
   return (
     <div className={`relative ${className}`}>
