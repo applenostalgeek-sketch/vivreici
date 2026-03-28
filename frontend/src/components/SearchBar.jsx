@@ -34,10 +34,10 @@ export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une c
       const loc = await locateByCoords(adresse.lat, adresse.lng)
       const code = loc.code_commune || adresse.code_insee
       if (code) {
-        navigate(`/commune/${code}?tab=carte&lat=${adresse.lat}&lng=${adresse.lng}`)
+        navigate(`/commune/${code}?lat=${adresse.lat}&lng=${adresse.lng}`)
       }
     } catch {
-      if (adresse.code_insee) navigate(`/commune/${adresse.code_insee}?tab=carte&lat=${adresse.lat}&lng=${adresse.lng}`)
+      if (adresse.code_insee) navigate(`/commune/${adresse.code_insee}?lat=${adresse.lat}&lng=${adresse.lng}`)
     } finally {
       setLocating(false)
     }

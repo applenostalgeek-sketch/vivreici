@@ -12,7 +12,7 @@ import { usePageMeta } from '../hooks/usePageMeta.js'
 export default function Commune() {
   const { codeInsee } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab = searchParams.get('tab') || 'carte'
+  const tab = searchParams.get('tab') || 'detail'
   const markerLat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')) : null
   const markerLng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')) : null
 
