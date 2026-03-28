@@ -357,14 +357,15 @@ export default function MapView({
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mode = irisMode ? 'Quartiers (IRIS)' : polyMode ? 'Communes' : 'Départements'
+  const modeLabel = irisMode ? 'Vue quartiers' : polyMode ? 'Vue communes' : 'Vue départements'
+  const modeHint  = irisMode ? null : polyMode ? 'Zoomez pour voir les quartiers' : 'Zoomez pour voir les communes'
 
   return (
     <div className={`relative ${className}`}>
       <div ref={mapRef} className="w-full h-full" />
 
       <div className="absolute bottom-4 left-3 z-[1000] bg-white/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-lg">
-        <p className="text-xs font-semibold text-ink mb-2 uppercase tracking-wider">{mode}</p>
+        <p className="text-xs font-semibold text-ink mb-2 uppercase tracking-wider">{modeLabel}</p>
         <div className="space-y-1.5">
           {Object.entries(SCORE_COLORS).map(([lettre, color]) => (
             <button
@@ -379,9 +380,9 @@ export default function MapView({
             </button>
           ))}
         </div>
-        {!irisMode && (
+        {modeHint && (
           <p className="text-xs text-ink-light mt-2 pt-2 border-t border-border">
-            Zoomez pour les quartiers
+            {modeHint}
           </p>
         )}
       </div>
