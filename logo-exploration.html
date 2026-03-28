@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>lebonquartier — exploration logo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,600;12..96,800&family=Syne:wght@400;700;800&family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #f5f4f0;
+    min-height: 100vh;
+    padding: 60px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+  }
+
+  .label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 28px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 60px;
+    flex-wrap: wrap;
+  }
+
+  /* ─── A : Bricolage Grotesque — "bon" en vert ─────────────────── */
+  .logo-a {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 36px;
+    font-weight: 400;
+    color: #1a1a1a;
+    letter-spacing: -0.02em;
+  }
+  .logo-a .bon { color: #16A34A; font-weight: 800; }
+
+  .logo-a-lg {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 56px;
+    font-weight: 400;
+    color: #1a1a1a;
+    letter-spacing: -0.03em;
+  }
+  .logo-a-lg .bon { color: #16A34A; font-weight: 800; }
+
+  .logo-a-sm {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: #1a1a1a;
+    letter-spacing: -0.01em;
+  }
+  .logo-a-sm .bon { color: #16A34A; font-weight: 800; }
+
+  /* ─── B : Syne — stacked, "quartier" XXL ─────────────────────── */
+  .logo-b {
+    font-family: 'Syne', sans-serif;
+    line-height: 0.9;
+    letter-spacing: -0.03em;
+  }
+  .logo-b .top {
+    font-size: 15px;
+    font-weight: 400;
+    color: #888;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .logo-b .bottom {
+    font-size: 52px;
+    font-weight: 800;
+    color: #1a1a1a;
+    display: block;
+  }
+  .logo-b .dot { color: #16A34A; }
+
+  /* ─── C : DM Serif + tag "score" ─────────────────────────────── */
+  .logo-c {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .logo-c .text {
+    font-family: 'Fraunces', serif;
+    font-size: 40px;
+    font-weight: 300;
+    color: #1a1a1a;
+    letter-spacing: -0.02em;
+  }
+  .logo-c .text em {
+    font-style: italic;
+    color: #16A34A;
+  }
+  .logo-c .badge {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+    background: #16A34A;
+    padding: 3px 7px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+
+  /* ─── D : Syne avec marqueur géo ─────────────────────────────── */
+  .logo-d {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-d .marker {
+    width: 32px;
+    height: 32px;
+    background: #16A34A;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    flex-shrink: 0;
+  }
+  .logo-d .marker-inner {
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    margin: 10px;
+    transform: rotate(45deg);
+  }
+  .logo-d .text {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .logo-d .text span { color: #16A34A; }
+
+  /* ─── E : Bricolage — dark mode ───────────────────────────────── */
+  .dark-bg {
+    background: #111827;
+    padding: 40px 48px;
+    border-radius: 16px;
+  }
+  .logo-e {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 40px;
+    font-weight: 400;
+    color: #f9fafb;
+    letter-spacing: -0.025em;
+  }
+  .logo-e .bon { color: #4ade80; font-weight: 800; }
+
+  /* ─── F : Plus Jakarta — mono-weight, underline accent ───────── */
+  .logo-f {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 34px;
+    font-weight: 300;
+    color: #1a1a1a;
+    letter-spacing: -0.02em;
+    position: relative;
+    display: inline-block;
+  }
+  .logo-f .bon {
+    font-weight: 800;
+    color: #1a1a1a;
+    position: relative;
+  }
+  .logo-f .bon::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #16A34A;
+    border-radius: 2px;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #e5e5e5;
+  }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class="label">A — Bricolage Grotesque · "bon" en vert · variations de taille</div>
+    <div class="row">
+      <div class="logo-a-lg">le<span class="bon">bon</span>quartier</div>
+      <div class="logo-a">le<span class="bon">bon</span>quartier</div>
+      <div class="logo-a-sm">le<span class="bon">bon</span>quartier</div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div>
+    <div class="label">B — Syne · stacked · "quartier" XXL</div>
+    <div class="row">
+      <div class="logo-b">
+        <span class="top">le bon</span>
+        <span class="bottom">quartier<span class="dot">.</span></span>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div>
+    <div class="label">C — Fraunces (serif) · "bon" en italique vert</div>
+    <div class="row">
+      <div class="logo-c">
+        <span class="text">le <em>bon</em> quartier</span>
+      </div>
+      <div class="logo-c">
+        <span class="text">le <em>bon</em> quartier</span>
+        <span class="badge">score</span>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div>
+    <div class="label">D — Syne · marqueur géo</div>
+    <div class="row">
+      <div class="logo-d">
+        <div class="marker"><div class="marker-inner"></div></div>
+        <div class="text">le<span> bon</span> quartier</div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div>
+    <div class="label">E — Bricolage · dark mode</div>
+    <div class="row">
+      <div class="dark-bg">
+        <div class="logo-e">le<span class="bon">bon</span>quartier</div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div>
+    <div class="label">F — Plus Jakarta Sans · soulignement vert sur "bon"</div>
+    <div class="row">
+      <div class="logo-f">le<span class="bon">bon</span>quartier</div>
+    </div>
+  </div>
+
+</body>
+</html>
