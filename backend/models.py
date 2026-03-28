@@ -30,7 +30,12 @@ class IrisScore(Base):
     score_equipements: Mapped[float] = mapped_column(Float, default=-1)
     score_sante: Mapped[float] = mapped_column(Float, default=-1)
     score_immobilier: Mapped[float] = mapped_column(Float, default=-1)
-    score_revenus: Mapped[float] = mapped_column(Float, default=-1)
+    score_revenus: Mapped[float] = mapped_column(Float, default=-1)  # stocké pour info, exclu du score global
+
+    # Scores injectés depuis la commune (données non disponibles au niveau IRIS)
+    score_securite: Mapped[float] = mapped_column(Float, default=-1)
+    score_transports: Mapped[float] = mapped_column(Float, default=-1)
+    score_education: Mapped[float] = mapped_column(Float, default=-1)
 
     nb_equipements: Mapped[int] = mapped_column(Integer, default=0)
     nb_medecins_pour_10000: Mapped[float] = mapped_column(Float, default=0)

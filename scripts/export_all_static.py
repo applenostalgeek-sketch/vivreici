@@ -120,6 +120,7 @@ def main():
                iz.population, iz.latitude, iz.longitude, iz.geometry,
                s.score_global, s.lettre, s.nb_categories_scorees,
                s.score_equipements, s.score_sante, s.score_immobilier, s.score_revenus,
+               s.score_securite, s.score_transports, s.score_education,
                s.nb_equipements, s.nb_medecins_pour_10000,
                s.prix_m2_median, s.revenu_median, s.taux_pauvrete,
                s.equipements_detail, s.poi_detail
@@ -157,31 +158,9 @@ def main():
     def sub_iv(val):
         return val if val is not None and val >= 0 else None
 
-    # Précomputation : IRIS dont le score_global/lettre change avec le fallback santé commune
-    # → utilisé dans les 3 sections (iris detail, iris-map, liste IRIS dans commune)
-    # pour garantir la cohérence entre carte et page détail
+    # iris_corrected supprimé : sante fallback + commune sub-scores maintenant baked in DB
+    # via import_commune_to_iris.py → cohérence garantie entre carte, fiche IRIS et liste commune
     iris_corrected = {}
-    for ci, r in iris_map.items():
-        sante = sub_iv(r.get('score_sante'))
-        cscore = scores_map.get(r['code_commune'])
-        if (sante is None or sante == 0) and cscore:
-            sc = cscore.get('score_sante')
-            if sc and sc > 0:
-                sante = round(sc, 1)
-        if sante != sub_iv(r.get('score_sante')):
-            sous = [v for v in [
-                sub_iv(r.get('score_equipements')),
-                sante,
-                sub_iv(r.get('score_immobilier')),
-                sub_iv(r.get('score_revenus')),
-            ] if v is not None]
-            if sous:
-                sg = round(sum(sous) / len(sous), 1)
-                nb_cat = r.get('nb_categories_scorees') or 0
-                iris_corrected[ci] = {
-                    'score_global': sg,
-                    'lettre': score_to_lettre(sg) if nb_cat >= 2 else None,
-                }
 
     # ── 4. Stats ─────────────────────────────────────────────────────────────
     nb_scorees = sum(1 for s in scores_map.values() if s['nb_categories_scorees'] >= 1)
@@ -337,8 +316,8 @@ def main():
                     'population':  r['population'],
                     'latitude':    r['latitude'],
                     'longitude':   r['longitude'],
-                    'score_global': _corr.get('score_global', r['score_global']),
-                    'lettre':       _corr.get('lettre', iris_lettre(r)),
+                    'score_global': r['score_global'],
+                    'lettre':       iris_lettre(r),
                     'nb_categories_scorees': r.get('nb_categories_scorees') or 0,
                     'donnees_partielles': est_partiel,
                     'rang':         rang,
@@ -348,7 +327,9 @@ def main():
                         'equipements': sub_i(r.get('score_equipements')),
                         'sante':       sub_i(r.get('score_sante')),
                         'immobilier':  sub_i(r.get('score_immobilier')),
-                        'revenus':     sub_i(r.get('score_revenus')),
+                        'securite':    sub_i(r.get('score_securite')),
+                        'transports':  sub_i(r.get('score_transports')),
+                        'education':   sub_i(r.get('score_education')),
                     },
                 })
             obj['iris'] = iris_list
@@ -376,26 +357,18 @@ def main():
 
     nb_iris_written = 0
     for code_iris, r in iris_map.items():
-        _corr = iris_corrected.get(code_iris, {})
-        s_global = _corr.get('score_global', r.get('score_global'))
-        lettre   = _corr.get('lettre', iris_lettre(r))
-
-        # score_sante avec fallback commune (cohérent avec iris_corrected)
-        sante_iris = sub_iv(r.get('score_sante'))
-        commune_score = scores_map.get(r['code_commune'])
-        if (sante_iris is None or sante_iris == 0) and commune_score:
-            sante_commune = commune_score.get('score_sante')
-            if sante_commune and sante_commune > 0:
-                sante_iris = round(sante_commune, 1)
+        lettre = iris_lettre(r)
 
         score_obj = {
-            'score_global': s_global,
+            'score_global': r.get('score_global'),
             'lettre': lettre,
             'sous_scores': {
                 'equipements': sub_iv(r.get('score_equipements')),
-                'sante':       sante_iris,
+                'sante':       sub_iv(r.get('score_sante')),
                 'immobilier':  sub_iv(r.get('score_immobilier')),
-                'revenus':     sub_iv(r.get('score_revenus')),
+                'securite':    sub_iv(r.get('score_securite')),
+                'transports':  sub_iv(r.get('score_transports')),
+                'education':   sub_iv(r.get('score_education')),
             },
             'donnees_brutes': {
                 'nb_equipements':        r.get('nb_equipements'),
@@ -412,6 +385,15 @@ def main():
         code_commune = r['code_commune']
         commune = communes_map.get(code_commune)
         commune_nom = commune['nom'] if commune else code_commune
+        # Contexte commune — affiché sur la fiche IRIS pour comparer avec la ville
+        commune_score_ref = None
+        if commune:
+            cs = scores_map.get(code_commune)
+            if cs and cs.get('nb_categories_scorees', 0) >= 3:
+                commune_score_ref = {
+                    'score_global': cs['score_global'],
+                    'lettre': lettre_ok(cs['lettre']),
+                }
 
         rang_info = rang_iris.get(code_iris, (None, 0))
         obj = {
@@ -426,6 +408,7 @@ def main():
             'rang_commune':   rang_info[0],
             'nb_iris_commune': rang_info[1],
             'commune_nom':    commune_nom,
+            'commune_score':  commune_score_ref,
         }
         dump(DATA / 'iris' / f'{code_iris}.json', obj)
         nb_iris_written += 1
@@ -447,8 +430,7 @@ def main():
                     geo = {'type': 'Point', 'coordinates': [r['longitude'], r['latitude']]}
                 else:
                     continue
-            _corr = iris_corrected.get(r['code_iris'], {})
-            lettre_map = _corr.get('lettre', iris_lettre(r))
+            lettre_map = iris_lettre(r)
             features.append({
                 'type': 'Feature',
                 'geometry': geo,
@@ -456,7 +438,7 @@ def main():
                     'code_iris':    r['code_iris'],
                     'nom':          r['nom'],
                     'typ_iris':     r['typ_iris'],
-                    'score_global': _corr.get('score_global', r.get('score_global')),
+                    'score_global': r.get('score_global'),
                     'lettre':       lettre_map,
                     'population':   r['population'],
                     'incomplet':    lettre_map is None,

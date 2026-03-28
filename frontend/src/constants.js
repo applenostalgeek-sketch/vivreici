@@ -33,8 +33,11 @@ export const CATEGORY_META = {
   demographie:   { label: 'Démographie',           icon: '📈', desc: 'Évolution population 2016→2021 (INSEE)' },
 }
 
-// Catégories disponibles au niveau IRIS (sous-ensemble)
-export const IRIS_CATEGORIES = ['equipements', 'sante', 'immobilier']
+// Catégories disponibles au niveau IRIS
+// Local = données propres au quartier ; commune = injectées depuis la commune parente
+export const IRIS_CATEGORIES_LOCAL = ['equipements', 'sante', 'immobilier']
+export const IRIS_CATEGORIES_COMMUNE = ['securite', 'transports', 'education']
+export const IRIS_CATEGORIES = [...IRIS_CATEGORIES_LOCAL, ...IRIS_CATEGORIES_COMMUNE]
 
 // ─── Filtres & options ────────────────────────────────────────────────────────
 

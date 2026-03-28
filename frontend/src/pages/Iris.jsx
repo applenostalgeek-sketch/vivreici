@@ -4,7 +4,7 @@ import ScoreCard from '../components/ScoreCard.jsx'
 import Nav from '../components/Nav.jsx'
 import ScoreBar from '../components/ScoreBar.jsx'
 import MapView from '../components/MapView.jsx'
-import { CATEGORY_META, IRIS_CATEGORIES } from '../constants.js'
+import { CATEGORY_META, IRIS_CATEGORIES_LOCAL, IRIS_CATEGORIES_COMMUNE } from '../constants.js'
 import { usePageMeta } from '../hooks/usePageMeta.js'
 
 const TYP_IRIS_LABEL = {
@@ -13,9 +13,6 @@ const TYP_IRIS_LABEL = {
   D: 'Zone diversifiée',
   Z: 'Commune entière',
 }
-
-// Sous-ensemble des catégories disponibles au niveau IRIS
-const IRIS_CAT_META = Object.fromEntries(IRIS_CATEGORIES.map(k => [k, CATEGORY_META[k]]))
 
 export default function Iris() {
   const { codeIris } = useParams()
@@ -207,22 +204,63 @@ export default function Iris() {
 
           {data.score && (
             <div className="space-y-6">
+              {/* Contexte commune */}
+              {data.commune_score && (
+                <div className="flex items-center gap-3 bg-paper border border-border rounded-xl px-5 py-3">
+                  <div className="flex-1">
+                    <div className="text-sm text-ink-light">
+                      Score global de <strong className="text-ink">{data.commune_nom}</strong>
+                    </div>
+                    <div className="text-xs text-ink-light mt-0.5">
+                      Sécurité, Transports et Éducation reflètent le niveau moyen de la ville — ces données ne sont pas disponibles à l'échelle du quartier.
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 flex items-center gap-2">
+                    <span className="font-mono text-sm text-ink-light">{Math.round(data.commune_score.score_global)}/100</span>
+                    <span className={`font-display text-2xl font-bold text-score-${data.commune_score.lettre}`}>
+                      {data.commune_score.lettre}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Score bars */}
               <div className="bg-white rounded-2xl border border-border p-6">
                 <h2 className="font-display text-xl text-ink mb-6">Scores par catégorie</h2>
-                <div className="space-y-5">
-                  {Object.entries(IRIS_CAT_META).map(([key, meta]) => {
+
+                {/* Données propres au quartier */}
+                <div className="space-y-5 mb-6">
+                  {IRIS_CATEGORIES_LOCAL.map(key => {
+                    const meta = CATEGORY_META[key]
                     const val = data.score.sous_scores?.[key]
                     if (val == null) return null
                     return <ScoreBar key={key} value={val} label={meta.label} icon={meta.icon} desc={meta.desc} />
                   })}
                 </div>
-                {data.score.nb_categories_scorees < 4 && (
-                  <p className="mt-6 text-xs text-ink-light border-t border-border pt-4">
-                    Score calculé sur <strong className="text-ink">{data.score.nb_categories_scorees}</strong> catégorie(s).
-                    Les IRIS ont moins de données disponibles que les communes.
-                  </p>
+
+                {/* Données de la commune (injectées) */}
+                {IRIS_CATEGORIES_COMMUNE.some(k => data.score.sous_scores?.[k] != null) && (
+                  <>
+                    <div className="border-t border-border pt-5 mb-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-xs font-medium text-ink-light uppercase tracking-wide">Données ville · {data.commune_nom}</span>
+                      </div>
+                      <div className="space-y-5">
+                        {IRIS_CATEGORIES_COMMUNE.map(key => {
+                          const meta = CATEGORY_META[key]
+                          const val = data.score.sous_scores?.[key]
+                          if (val == null) return null
+                          return <ScoreBar key={key} value={val} label={meta.label} icon={meta.icon} desc={meta.desc} />
+                        })}
+                      </div>
+                    </div>
+                  </>
                 )}
+
+                <p className="mt-2 text-xs text-ink-light border-t border-border pt-4">
+                  Score calculé sur <strong className="text-ink">{data.score.nb_categories_scorees}</strong> catégorie(s).
+                  Même méthodologie que les communes — résultats comparables.
+                </p>
               </div>
 
               {/* Données brutes */}
@@ -358,7 +396,8 @@ export default function Iris() {
           <div className="mt-10 pt-8 border-t border-border text-sm text-ink-light">
             <p>
               Les zones IRIS (INSEE) regroupent ~2 000 habitants chacune.
-              Scores basés sur les données BPE 2024, Filosofi 2021 et DVF 2024.{' '}
+              Équipements, Santé et Prix au m² sont calculés à l'échelle du quartier.
+              Sécurité, Transports et Éducation proviennent de la commune — même valeur pour tous ses quartiers.{' '}
               <Link to="/methode" className="underline hover:text-ink">En savoir plus sur la méthode</Link>
             </p>
           </div>

@@ -24,3 +24,6 @@ frontend/public/iris-locator.json
 .DS_Store
 *.log
 tmp/
+
+# Local Netlify folder
+.netlify

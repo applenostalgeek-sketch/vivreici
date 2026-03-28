@@ -61,7 +61,8 @@ Depuis `/Users/admin/vivreici/` :
 2. `python3 -m backend.data_import.import_bpe_iris`         → équipements + santé par IRIS (~3min)
 3. `python3 -m backend.data_import.import_filosofi_iris`    → revenus par IRIS (~2min)
 4. `python3 -m backend.data_import.import_dvf_iris`         → immobilier par IRIS (jointure spatiale, ~15min)
-5. `python3 -m backend.data_import.import_iris_geometry`    → contours polygons IRIS pour la carte (~5min, optionnel)
+5. `python3 -m backend.data_import.import_commune_to_iris`  → transfère sécu/transports/édu commune→IRIS + fallback santé (~30s) **OBLIGATOIRE**
+6. `python3 -m backend.data_import.import_iris_geometry`    → contours polygons IRIS pour la carte (~5min, optionnel)
 
 ## Architecture
 
@@ -69,7 +70,7 @@ Depuis `/Users/admin/vivreici/` :
 - `communes` : code_insee, nom, departement, region, population, codes_postaux, latitude, longitude
 - `scores` : 8 sous-scores (-1 si absent), données brutes, score_global, lettre, nb_categories_scorees
 - `iris_zones` : code_iris (9 chars = commune 5 + iris 4), nom, code_commune, typ_iris, population, latitude, longitude
-- `iris_scores` : 4 sous-scores IRIS (equipements, sante, immobilier, revenus), score_global, lettre
+- `iris_scores` : 6 sous-scores IRIS (equipements, sante, immobilier — locaux + securite, transports, education — injectés depuis commune), score_global, lettre
 
 ### Scores (0-100, percentile national)
 - `score_equipements` : BPE 2024 (équipements pour 1000 hab)
@@ -86,14 +87,18 @@ Depuis `/Users/admin/vivreici/` :
 
 ### IRIS
 - 48,569 zones IRIS importées (IGN 2024)
-- 36,655 scorées avec >= 1 catégorie (75% coverage)
-- 4 catégories IRIS : équipements, santé, immobilier, revenus
-- Données : BPE 2024 (DCIRIS), Filosofi IRIS 2020, DVF 2024 (jointure spatiale)
+- 40,860 scorées avec >= 2 catégories (99% coverage des IRIS avec données locales)
+- **6 catégories IRIS** : équipements, santé, immobilier (locaux) + sécurité, transports, éducation (injectés depuis commune)
+- **Même méthodologie et poids que les communes** (CATEGORIES dict) → scores comparables
+- `import_commune_to_iris.py` : transfère les 3 sous-scores commune + fallback santé APL
+- `score_revenus` : stocké en DB mais EXCLU du score (cohérence avec communes)
+- Données locales : BPE 2024 (DCIRIS), DVF 2024 (jointure spatiale)
 - Note : équipements scorés sur nb brut (IRIS ~2000 hab uniformes, pas de normalisation pop)
-- Note Filosofi IRIS : seulement communes >= 5000 hab (16K IRIS vs 33K scorés BPE)
+- Note Filosofi IRIS : taux_pauvrete disponible communes >= 5000 hab — stocké en données brutes, non scoré
 - Sur la carte : zoom >= 11 → mode quartier (IRIS), zoom < 11 → communes
-- Page IRIS : /iris/{code_iris}
+- Page IRIS : /iris/{code_iris} — affiche contexte commune (lettre + score global)
 - IRIS Paris : code_commune = 75101-75120 (arrondissements), pas 75056
+- **Bug connu** : Limoges (87085) population=0 en DB → score_equipements=0 pour la commune (score C anormalement bas). IRIS de Limoges scorent correctement (6 cats, B-C). Bug de données, non lié au scoring IRIS.
 
 ### Paris/Lyon/Marseille
 - Arrondissements en DB (75101-75120, 69381-69389, 13201-13216) + commune parent
