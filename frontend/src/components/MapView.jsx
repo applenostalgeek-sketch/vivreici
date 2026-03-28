@@ -326,6 +326,7 @@ export default function MapView({
           if (map.hasLayer(irisLayer)) { irisLayer.removeFrom(map); irisLayer.clearLayers(); lastIrisBbox.current = '' }
           if (map.hasLayer(communePolyLayer)) { communePolyLayer.removeFrom(map); communePolyLayer.clearLayers(); lastCommunePolyBbox.current = '' }
           if (!map.hasLayer(deptLayer)) deptLayer.addTo(map)
+          renderDepts()
           setIrisMode(false); setPolyMode(false)
         }
       }
