@@ -359,7 +359,11 @@ export default function MapView({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const modeLabel = irisMode ? 'Vue quartiers' : polyMode ? 'Vue communes' : 'Vue départements'
-  const modeHint  = irisMode ? null : polyMode ? 'Zoomez pour voir les quartiers' : 'Zoomez pour voir les communes'
+  const modeHint  = irisMode
+    ? null
+    : polyMode
+    ? 'Zoomez pour voir les quartiers'
+    : 'Zoomez pour accéder aux fiches communes'
 
   return (
     <div className={`relative ${className}`}>
