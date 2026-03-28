@@ -11,11 +11,15 @@ curl -fL "${DB_URL}" -o vivreici.db --retry 3 --retry-delay 5
 
 echo "DB size: $(du -sh vivreici.db | cut -f1)"
 
-# 2. Export all static JSON (only stdlib needed)
+# 2. Install Python deps for export (shapely pour polygones départements)
+echo "Installing Python dependencies..."
+pip install shapely numpy --quiet
+
+# 3. Export all static JSON
 echo "Exporting static data..."
 python3 scripts/export_all_static.py
 
-# 3. Build frontend
+# 4. Build frontend
 echo "Building frontend..."
 cd frontend
 npm ci
