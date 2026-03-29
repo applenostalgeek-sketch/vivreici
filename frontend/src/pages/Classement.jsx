@@ -265,9 +265,11 @@ export default function Classement() {
           </>
         )}
       </main>
-      <footer className="border-t border-border px-6 py-6 text-center text-xs text-ink-light">
-        lebonquartier · BPE 2024 INSEE · DVF 2024 DGFiP · SSMSI 2024 · APL 2023 DREES · CEREMA 2023 · Filosofi 2021 INSEE ·{' '}
+      <footer className="border-t border-border px-6 py-5 text-center text-xs text-ink-light">
+        lebonquartier · open data français · 2026 ·{' '}
         <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
+        {' · '}
+        <a href="/carte" className="underline hover:text-ink">Carte</a>
       </footer>
     </div>
   )
