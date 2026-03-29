@@ -4,6 +4,8 @@ import { getClassement } from '../hooks/useSearch.js'
 import Nav from '../components/Nav.jsx'
 import { POP_OPTIONS, CATEGORY_META } from '../constants.js'
 import { usePageMeta } from '../hooks/usePageMeta.js'
+import { useProfile } from '../context/ProfileContext.jsx'
+import { PROFILES } from '../utils/profiles.js'
 
 const SCORE_BAR = { A: 'bg-score-A', B: 'bg-score-B', C: 'bg-score-C', D: 'bg-score-D', E: 'bg-score-E' }
 const SCORE_TEXT = { A: 'text-score-A', B: 'text-score-B', C: 'text-score-C', D: 'text-score-D', E: 'text-score-E' }
@@ -36,6 +38,7 @@ export default function Classement() {
   const [hasMore, setHasMore] = useState(false)
   const [offset, setOffset] = useState(0)
   const navigate = useNavigate()
+  const { profile } = useProfile()
   const LIMIT = 50
 
   const toggleCat = (key) => {
@@ -48,6 +51,7 @@ export default function Classement() {
       const params = { limit: LIMIT, sort: 'score', ordre: 'desc', min_population: minPop, offset: newOffset }
       if (dept) params.departement = dept
       Object.entries(catFilters).forEach(([key, val]) => { if (val) params[`${key}_min`] = val })
+      if (profile !== 'national') params.weights = PROFILES[profile].weights
       const data = await getClassement(params)
       if (append) {
         setCommunes(prev => [...prev, ...data])
@@ -61,7 +65,7 @@ export default function Classement() {
     } finally {
       setLoading(false)
     }
-  }, [minPop, dept, catFilters])
+  }, [minPop, dept, catFilters, profile])
 
   useEffect(() => {
     setOffset(0)
@@ -84,8 +88,15 @@ export default function Classement() {
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="font-display text-4xl text-ink mb-1">Classement national</h1>
-          <p className="text-ink-light">Communes classées par score de qualité de vie</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="font-display text-4xl text-ink">Classement national</h1>
+            {profile !== 'national' && (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-ink text-paper text-sm font-medium">
+                {PROFILES[profile].emoji} {PROFILES[profile].label}
+              </span>
+            )}
+          </div>
+          <p className="text-ink-light mt-1">Communes classées par score de qualité de vie</p>
         </div>
 
         {/* Filters */}

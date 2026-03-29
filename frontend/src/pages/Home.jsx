@@ -5,6 +5,8 @@ import Nav from '../components/Nav.jsx'
 import { usePageMeta } from '../hooks/usePageMeta.js'
 import { SCORE_COLORS } from '../constants.js'
 import { loadCommunes } from '../hooks/useSearch.js'
+import { useProfile } from '../context/ProfileContext.jsx'
+import { PROFILES } from '../utils/profiles.js'
 
 const CATEGORIES = [
   { icon: '🏪', label: 'Équipements',           desc: 'Commerces, services publics, équipements de proximité' },
@@ -21,6 +23,7 @@ export default function Home() {
   const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [topCommunes, setTopCommunes] = useState([])
+  const { profile, selectProfile } = useProfile()
 
   usePageMeta({
     title: null,
@@ -54,6 +57,7 @@ export default function Home() {
           </a>
         </nav>
 
+
         <main className="relative z-10 flex flex-col items-center px-6 pt-12 pb-20">
 
           {/* Badge */}
@@ -84,6 +88,26 @@ export default function Home() {
             style={{ animationDelay: '300ms', opacity: 0, animationFillMode: 'forwards' }}
           >
             <SearchBar size="md" placeholder="Commune ou adresse précise…" />
+          </div>
+
+          {/* Sélecteur de profil */}
+          <div
+            className="mt-5 flex flex-wrap justify-center gap-2 animate-fade-up"
+            style={{ animationDelay: '380ms', opacity: 0, animationFillMode: 'forwards' }}
+          >
+            {Object.entries(PROFILES).map(([key, p]) => (
+              <button
+                key={key}
+                onClick={() => selectProfile(key)}
+                className={`px-4 py-1.5 rounded-full text-sm border transition-all ${
+                  profile === key
+                    ? 'bg-paper text-ink border-paper font-medium'
+                    : 'border-paper/20 text-paper/50 hover:border-paper/40 hover:text-paper/80'
+                }`}
+              >
+                {p.emoji ? `${p.emoji} ${p.label}` : p.label}
+              </button>
+            ))}
           </div>
 
           {/* Score preview strip — communes réelles */}

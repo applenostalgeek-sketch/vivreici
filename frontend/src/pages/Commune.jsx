@@ -2,12 +2,13 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { getCommune, getClassement } from '../hooks/useSearch.js'
 import ScoreCard from '../components/ScoreCard.jsx'
-import CategoryBreakdown from '../components/CategoryBreakdown.jsx'
 import Nav from '../components/Nav.jsx'
 import ScoreBar from '../components/ScoreBar.jsx'
 import MapView from '../components/MapView.jsx'
 import { CATEGORY_META } from '../constants.js'
 import { usePageMeta } from '../hooks/usePageMeta.js'
+import { useProfile } from '../context/ProfileContext.jsx'
+import { PROFILES, recalcScore } from '../utils/profiles.js'
 
 export default function Commune() {
   const { codeInsee } = useParams()
@@ -21,6 +22,7 @@ export default function Commune() {
   const [error, setError] = useState(null)
   const [voisines, setVoisines] = useState([])
   const navigate = useNavigate()
+  const { profile } = useProfile()
 
   function setTab(t) {
     setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('tab', t); return p })
@@ -151,11 +153,26 @@ export default function Commune() {
               </div>
             </div>
 
-            {data.score ? (
-              <div className="flex-shrink-0">
-                <ScoreCard lettre={data.score.lettre} score={data.score.score_global} size="lg" />
+            {data.score ? (() => {
+              const profileResult = recalcScore(data.score.sous_scores, profile)
+              const displayLettre = profileResult?.lettre ?? data.score.lettre
+              const displayScore = profileResult?.score_global ?? data.score.score_global
+              return (
+              <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                <ScoreCard lettre={displayLettre} score={displayScore} size="lg" />
+                {profileResult && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-ink text-paper text-xs font-medium">
+                      {PROFILES[profile].emoji} {PROFILES[profile].label}
+                    </span>
+                    <span className="text-xs text-ink-light">
+                      national : {data.score.lettre} · {Math.round(data.score.score_global)}
+                    </span>
+                  </div>
+                )}
               </div>
-            ) : (
+              )
+            })() : (
               <div className="bg-paper border border-border rounded-2xl px-6 py-4 text-center">
                 <p className="text-ink-light text-sm">Score en cours de calcul</p>
               </div>

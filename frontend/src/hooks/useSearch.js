@@ -174,8 +174,25 @@ export async function getCommune(codeInsee) {
   return resp.json()
 }
 
+function _scoreToLettre(s) {
+  return s >= 80 ? 'A' : s >= 60 ? 'B' : s >= 40 ? 'C' : s >= 20 ? 'D' : 'E'
+}
+
+function _computeProfileScore(sous_scores, weights) {
+  if (!sous_scores || !weights) return null
+  const available = {}
+  for (const [cat, w] of Object.entries(weights)) {
+    const val = sous_scores[cat]
+    if (val != null && val >= 0) available[cat] = val
+  }
+  if (Object.keys(available).length === 0) return null
+  const totalW = Object.keys(available).reduce((s, cat) => s + weights[cat], 0)
+  const score = Object.entries(available).reduce((s, [cat, val]) => s + val * (weights[cat] / totalW), 0)
+  return Math.round(score * 10) / 10
+}
+
 export async function getClassement(params = {}) {
-  const { departement, min_population = 0, limit = 100, ordre = 'desc', offset = 0 } = params
+  const { departement, min_population = 0, limit = 100, ordre = 'desc', offset = 0, weights } = params
 
   // Filtres par score minimum par catégorie (ex: securite_min, sante_min, ...)
   const catMins = {}
@@ -186,9 +203,11 @@ export async function getClassement(params = {}) {
   }
 
   const hasCatFilters = Object.keys(catMins).length > 0
+  const needScores = hasCatFilters || !!weights
+
   const [communes, sMap] = await Promise.all([
     loadCommunes(),
-    hasCatFilters ? loadCommunesScores() : Promise.resolve(null),
+    needScores ? loadCommunesScores() : Promise.resolve(null),
   ])
 
   let filtered = communes.filter(c => {
@@ -204,13 +223,29 @@ export async function getClassement(params = {}) {
     }
     return true
   })
-  filtered.sort((a, b) => {
-    const va = a.score_global ?? -1
-    const vb = b.score_global ?? -1
-    return ordre === 'asc' ? va - vb : vb - va
-  })
+
+  // Tri : par profil si weights fournis, sinon par score national
+  if (weights && sMap) {
+    filtered = filtered.map(c => {
+      const ss = sMap.get(c.code_insee)?.sous_scores
+      return { ...c, _ps: _computeProfileScore(ss, weights) }
+    })
+    filtered.sort((a, b) => {
+      const va = a._ps ?? a.score_global ?? -1
+      const vb = b._ps ?? b.score_global ?? -1
+      return ordre === 'asc' ? va - vb : vb - va
+    })
+  } else {
+    filtered.sort((a, b) => {
+      const va = a.score_global ?? -1
+      const vb = b.score_global ?? -1
+      return ordre === 'asc' ? va - vb : vb - va
+    })
+  }
+
   return filtered.slice(Number(offset), Number(offset) + Number(limit)).map(c => {
-    const s = sMap?.get(c.code_insee)
+    const ss = sMap?.get(c.code_insee)?.sous_scores ?? null
+    const ps = weights ? (c._ps ?? null) : null
     return {
       code_insee: c.code_insee,
       nom: c.nom,
@@ -218,9 +253,9 @@ export async function getClassement(params = {}) {
       region: c.region,
       population: c.population,
       score: {
-        score_global: c.score_global,
-        lettre: c.lettre,
-        sous_scores: s?.sous_scores ?? null,
+        score_global: ps ?? c.score_global,
+        lettre: ps != null ? _scoreToLettre(ps) : c.lettre,
+        sous_scores: ss,
       },
     }
   })
