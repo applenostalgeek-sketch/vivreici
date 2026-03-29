@@ -16,7 +16,7 @@ const CATEGORIES = [
   { icon: '🏡', nom: 'Immobilier',    poids: 14, detail: 'Prix au m² médian (score inversé — moins cher = mieux)',   src: 'DVF 2024 DGFiP' },
   { icon: '🎓', nom: 'Éducation',     poids:  8, detail: 'IPS collèges (40 %) + résultats brevet DNB (40 %) + lycées pro (20 %)', src: 'DEPP 2021-2025' },
   { icon: '🌿', nom: 'Environnement', poids:  8, detail: 'Part d\'espaces naturels et agricoles non artificialisés', src: 'CEREMA 2023' },
-  { icon: '📈', nom: 'Démographie',   poids:  4, detail: 'Évolution de la population sur 5 ans (2017 → 2022)',       src: 'Populations de référence INSEE 2022' },
+  { icon: '📈', nom: 'Démographie',   poids:  4, detail: 'Évolution de la population sur 6 ans (2017 → 2023)',       src: 'Populations de référence INSEE 2023' },
 ]
 
 const LIMITES = [

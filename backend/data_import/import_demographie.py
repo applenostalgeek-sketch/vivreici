@@ -2,10 +2,10 @@
 Import populations de référence INSEE — évolution démographique par commune.
 
 Sources :
-  - Populations légales 2017    : ZIP (INSEE, millésime 2017)
-  - Populations de référence 2022 : ZIP (INSEE, millésime 2022 — nouveau nom depuis 2022)
+  - Populations légales 2017      : ZIP (INSEE, millésime 2017)
+  - Populations de référence 2023 : ZIP (INSEE, millésime 2023 — en vigueur jan 2026)
 
-Métrique : évolution_pop_5ans = (pop2022 - pop2017) / pop2017 × 100
+Métrique : évolution_pop_6ans = (pop2023 - pop2017) / pop2017 × 100
 Score    : percentile national direct (croissance = meilleur)
 
 Lancement :
@@ -33,7 +33,7 @@ from backend.scoring import calculer_score_global, percentile_to_score
 # ── URLs INSEE ─────────────────────────────────────────────────────────────────
 
 URL_2017 = "https://www.insee.fr/fr/statistiques/fichier/4265429/ensemble.zip"
-URL_2022 = "https://www.insee.fr/fr/statistiques/fichier/8290591/ensemble.zip"
+URL_2023 = "https://www.insee.fr/fr/statistiques/fichier/8680726/ensemble.zip"
 
 
 # ── Téléchargement ─────────────────────────────────────────────────────────────
@@ -180,15 +180,15 @@ def _lire_excel(data: bytes, annee: int) -> pd.DataFrame:
 
 # ── Calcul de l'évolution ──────────────────────────────────────────────────────
 
-def calculer_evolution(df_2017: pd.DataFrame, df_2022: pd.DataFrame) -> pd.DataFrame:
+def calculer_evolution(df_2017: pd.DataFrame, df_2023: pd.DataFrame) -> pd.DataFrame:
     """
     Joint les deux séries de population et calcule l'évolution en %.
-    Retourne un DataFrame avec columns: code_insee, pop_2017, pop_2022, evolution_5ans.
+    Retourne un DataFrame avec columns: code_insee, pop_2017, pop_2023, evolution_5ans.
     """
-    df = df_2017.join(df_2022, how="inner", lsuffix="_2017", rsuffix="_2022")
+    df = df_2017.join(df_2023, how="inner", lsuffix="_2017", rsuffix="_2023")
     df = df.reset_index()
 
-    df["evolution_5ans"] = ((df["pop_2022"] - df["pop_2017"]) / df["pop_2017"]) * 100
+    df["evolution_5ans"] = ((df["pop_2023"] - df["pop_2017"]) / df["pop_2017"]) * 100
     df = df.dropna(subset=["evolution_5ans"])
 
     print(f"\n  {len(df):,} communes avec évolution calculée")
@@ -196,29 +196,29 @@ def calculer_evolution(df_2017: pd.DataFrame, df_2022: pd.DataFrame) -> pd.DataF
     print(f"  En croissance (>0%) : {(df['evolution_5ans'] > 0).sum():,}")
     print(f"  En déclin   (<-5%) : {(df['evolution_5ans'] < -5).sum():,}")
 
-    return df[["code_insee", "pop_2017", "pop_2022", "evolution_5ans"]]
+    return df[["code_insee", "pop_2017", "pop_2023", "evolution_5ans"]]
 
 
 # ── Import principal ───────────────────────────────────────────────────────────
 
 async def run():
-    print("=== Import démographie (populations INSEE 2017→2022) ===\n")
+    print("=== Import démographie (populations INSEE 2017→2023) ===\n")
     await init_db()
 
     # 1. Télécharger les deux fichiers
     data_2017 = await telecharger(URL_2017, "populations légales 2017 (ZIP)")
-    data_2022 = await telecharger(URL_2022, "populations de référence 2022 (ZIP)")
+    data_2023 = await telecharger(URL_2023, "populations de référence 2023 (ZIP)")
 
     # 2. Extraire les populations
     print("\nExtraction populations 2017...")
     df_2017 = extraire_pop(data_2017, 2017, est_zip=True)
 
-    print("\nExtraction populations 2022...")
-    df_2022 = extraire_pop(data_2022, 2022, est_zip=True)
+    print("\nExtraction populations 2023...")
+    df_2023 = extraire_pop(data_2023, 2023, est_zip=True)
 
     # 3. Calcul évolution
-    print("\nCalcul de l'évolution démographique 2017→2022...")
-    df = calculer_evolution(df_2017, df_2022)
+    print("\nCalcul de l'évolution démographique 2017→2023...")
+    df = calculer_evolution(df_2017, df_2023)
 
     # 4. Calcul du score par percentile
     serie_evo = df["evolution_5ans"]
