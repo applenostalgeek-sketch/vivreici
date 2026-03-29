@@ -341,13 +341,14 @@ export default function Commune() {
               {(() => {
                 const db = data.score.donnees_brutes
                 const td = db.transport_detail
-                const lignes = td?.lignes || []
                 const nomGare = db.nom_gare
                 const distGare = db.distance_gare_km
+                // Si une gare est affichée, masquer les lignes ferroviaires (type 2 = RER/TER) — redondant
+                const lignes = (td?.lignes || []).filter(l => !nomGare || l.type_code !== 2)
 
                 if (!nomGare && !lignes.length) return null
 
-                const TYPE_ORDER = [1, 2, 0, 11, 12, 4, 3]
+                const TYPE_ORDER = [1, 0, 11, 12, 4, 3]
                 const groups = {}
                 for (const l of lignes) {
                   const k = l.type_code
