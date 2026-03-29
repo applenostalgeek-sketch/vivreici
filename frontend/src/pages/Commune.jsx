@@ -345,7 +345,7 @@ export default function Commune() {
                   <div className="bg-white rounded-2xl border border-border p-6">
                     <h2 className="font-display text-xl text-ink mb-4">Transports en commun</h2>
 
-                    {nomGare && (
+                    {nomGare && !['2A', '2B'].includes(data.departement) && (
                       <div className="flex items-center gap-2 mb-4 text-sm flex-wrap">
                         <span>🚉</span>
                         <span className="text-ink-light">Gare la plus proche :</span>
@@ -517,23 +517,11 @@ export default function Commune() {
             </div>
           )}
 
-          {/* Méthode + disclaimer */}
-          <div className="mt-10 pt-8 border-t border-border space-y-3 text-sm text-ink-light">
-            <p>
-              Les scores sont des percentiles nationaux : 50 = médiane nationale, 80 = top 20%.{' '}
-              <Link to="/methode" className="underline hover:text-ink">En savoir plus sur la méthode</Link>
-            </p>
-            <p className="text-xs border border-border/60 rounded-lg px-4 py-3 bg-paper">
-              Ce score est un outil de comparaison objective basé sur des données publiques. Il ne remplace pas le conseil d'un professionnel local (agent immobilier, notaire) qui connaît le terrain et les projets d'urbanisme en cours.
-            </p>
-          </div>
           </>)} {/* fin tab detail */}
         </main>
         <footer className="border-t border-border px-6 py-5 text-center text-xs text-ink-light">
           lebonquartier · open data français · 2026 ·{' '}
           <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
-          {' · '}
-          <a href="/carte" className="underline hover:text-ink">Carte</a>
         </footer>
         </>
       )}

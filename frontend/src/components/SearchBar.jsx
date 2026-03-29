@@ -121,14 +121,10 @@ export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une c
                     <span className="font-semibold text-ink">{item.nom}</span>
                     <span className="ml-2 text-sm text-ink-light">
                       {item.codes_postaux?.[0] || item.departement}
+                      {item.population > 0 && ` · ${item.population.toLocaleString('fr-FR')} hab.`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-right flex-shrink-0">
-                    {item.population > 0 && (
-                      <span className="text-xs text-ink-light font-mono">
-                        {item.population.toLocaleString('fr-FR')} hab.
-                      </span>
-                    )}
                     {item.score?.lettre && (
                       <span className={`score-badge score-badge-${item.score.lettre} w-7 h-7 text-sm`}>
                         {item.score.lettre}
