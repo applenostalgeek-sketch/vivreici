@@ -8,7 +8,7 @@ const SORT_OPTIONS = [
   { key: 'global',      label: 'Score global',   field: 'score_global' },
   { key: 'equipements', label: 'Équipements',    field: ['sous_scores', 'equipements'] },
   { key: 'sante',       label: 'Santé',          field: ['sous_scores', 'sante'] },
-  { key: 'immobilier',  label: 'Accessibilité',  field: ['sous_scores', 'immobilier'] },
+  { key: 'immobilier',  label: 'Immobilier',     field: ['sous_scores', 'immobilier'] },
 ]
 
 function getScore(iris, field) {

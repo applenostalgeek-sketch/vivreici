@@ -124,7 +124,7 @@ export default function Iris() {
           {tab === 'detail' && (<>
 
           {/* Avertissement données partielles */}
-          {data.score && data.score.nb_categories_scorees < 2 && (
+          {data.score && data.score.nb_categories_scorees < 3 && (
             <div className="flex items-start gap-3 mb-8 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3">
               <span className="text-amber-500 text-lg flex-shrink-0">⚠</span>
               <div>

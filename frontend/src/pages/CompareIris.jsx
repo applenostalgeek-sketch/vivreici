@@ -8,7 +8,7 @@ import { usePageMeta } from '../hooks/usePageMeta.js'
 const CAT_META = [
   { key: 'equipements', label: 'Équipements',          color: '#16A34A' },
   { key: 'sante',       label: 'Santé',                color: '#0EA5E9' },
-  { key: 'immobilier',  label: 'Accessibilité logement',color: '#8B5CF6' },
+  { key: 'immobilier',  label: 'Immobilier',            color: '#8B5CF6' },
 ]
 
 /**
@@ -70,7 +70,7 @@ function genererSynthese(d1, d2) {
   const sante1 = sous1.sante ?? 0
   const sante2 = sous2.sante ?? 0
 
-  if (avantages1.some(a => a.label === 'accessibilité logement') || avantages2.some(a => a.label === 'accessibilité logement')) {
+  if (avantages1.some(a => a.key === 'immobilier') || avantages2.some(a => a.key === 'immobilier')) {
     const accessible = immo1 > immo2 ? n1 : n2
     parts.push(`Pour un budget logement serré, **${accessible}** est plus accessible.`)
   }

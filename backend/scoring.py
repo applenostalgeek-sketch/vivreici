@@ -16,8 +16,8 @@ CATEGORIES = {
     "securite":     {"poids": 0.14, "sens": "inverse"},  # facteur d'élimination, données SSMSI biaisées
     "immobilier":   {"poids": 0.14, "sens": "inverse"},  # accessibilité logement
     "education":    {"poids": 0.08, "sens": "direct"},   # IPS 40% + DNB 40% + lycée pro 20%
-    "environnement":{"poids": 0.08, "sens": "inverse"},  # espaces non-artificialisés CEREMA 2021
-    "demographie":  {"poids": 0.04, "sens": "direct"},   # évolution population 2016→2021
+    "environnement":{"poids": 0.08, "sens": "inverse"},  # espaces non-artificialisés CEREMA 2023
+    "demographie":  {"poids": 0.04, "sens": "direct"},   # évolution population 2017→2023
     # NB : le code renormalise automatiquement quand une catégorie manque (score=-1).
     # Cohésion (revenus) retirée : taux pauvreté = proxy richesse, biais ségrégant (ex: Saclay 97/100).
 }

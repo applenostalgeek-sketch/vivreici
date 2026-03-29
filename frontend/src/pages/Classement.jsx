@@ -9,7 +9,7 @@ const SCORE_BAR = { A: 'bg-score-A', B: 'bg-score-B', C: 'bg-score-C', D: 'bg-sc
 const SCORE_TEXT = { A: 'text-score-A', B: 'text-score-B', C: 'text-score-C', D: 'text-score-D', E: 'text-score-E' }
 
 // Catégories affichées en pills dans le classement
-const CAT_LABELS = { equipements: 'Équipements', securite: 'Sécurité', immobilier: 'Prix m²', education: 'Éducation', sante: 'Santé', transports: 'Transports' }
+const CAT_LABELS = { equipements: 'Équipements', securite: 'Sécurité', immobilier: 'Immobilier', education: 'Éducation', sante: 'Santé', transports: 'Transports' }
 
 const CAT_FILTERS = [
   { key: 'securite',    label: 'Sécurité',     icon: '🔒' },
@@ -17,7 +17,7 @@ const CAT_FILTERS = [
   { key: 'sante',       label: 'Santé',         icon: '🏥' },
   { key: 'education',   label: 'Éducation',     icon: '🎓' },
   { key: 'equipements', label: 'Équipements',   icon: '🏪' },
-  { key: 'immobilier',  label: 'Prix abordable',icon: '🏡' },
+  { key: 'immobilier',  label: 'Immobilier',    icon: '🏡' },
 ]
 
 export default function Classement() {

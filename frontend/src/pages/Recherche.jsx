@@ -152,8 +152,8 @@ export default function Recherche() {
       const rank = prix.filter(x => x < p).length / prix.length
       const scoreImmoLocal = Math.round((1 - rank) * 100)
       const sousCopy = { ...r.score.sous_scores, immobilier: scoreImmoLocal }
-      const cats = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'revenus', 'transports']
-      const weights_def = { equipements: 0.18, securite: 0.18, immobilier: 0.14, education: 0.14, sante: 0.14, revenus: 0.14, transports: 0.10 }
+      const cats = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports']
+      const weights_def = { equipements: 0.20, sante: 0.18, transports: 0.18, securite: 0.14, immobilier: 0.14, education: 0.08 }
       let wsum = 0, vsum = 0
       for (const cat of cats) {
         const v = sousCopy[cat]

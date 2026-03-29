@@ -11,10 +11,10 @@ const LETTRES = [
 
 const CATEGORIES = [
   { icon: '🏪', nom: 'Équipements',   poids: 20, detail: 'Commerces, services et équipements de proximité',          src: 'BPE 2024 INSEE' },
-  { icon: '🚆', nom: 'Transports',    poids: 18, detail: 'Distance gare SNCF + densité arrêts bus, métro, tram',     src: 'SNCF · transport.data.gouv.fr' },
-  { icon: '🏥', nom: 'Santé',         poids: 18, detail: 'Accessibilité médecins généralistes (APL — aire de chalandise)', src: 'APL 2023 DREES' },
-  { icon: '🔒', nom: 'Sécurité',      poids: 14, detail: 'Taux de criminalité (score inversé — moins = mieux)',      src: 'SSMSI 2024' },
-  { icon: '🏡', nom: 'Immobilier',    poids: 14, detail: 'Prix au m² médian (score inversé — moins cher = mieux)',   src: 'DVF 2024 DGFiP' },
+  { icon: '🚆', nom: 'Transports',    poids: 17, detail: 'Distance gare SNCF + densité arrêts bus, métro, tram',     src: 'SNCF · transport.data.gouv.fr' },
+  { icon: '🏥', nom: 'Santé',         poids: 17, detail: 'Accessibilité médecins généralistes (zone d\'attraction)', src: 'APL 2023 DREES' },
+  { icon: '🔒', nom: 'Sécurité',      poids: 13, detail: 'Taux de criminalité (score inversé — moins = mieux)',      src: 'SSMSI 2024' },
+  { icon: '🏡', nom: 'Immobilier',    poids: 13, detail: 'Prix au m² médian (score inversé — moins cher = mieux)',   src: 'DVF 2024 DGFiP' },
   { icon: '🎓', nom: 'Éducation',     poids:  8, detail: 'IPS collèges (40 %) + résultats brevet DNB (40 %) + lycées pro (20 %)', src: 'DEPP 2021-2025' },
   { icon: '🌿', nom: 'Environnement', poids:  8, detail: 'Part d\'espaces naturels et agricoles non artificialisés', src: 'CEREMA 2023' },
   { icon: '📈', nom: 'Démographie',   poids:  4, detail: 'Évolution de la population sur 6 ans (2017 → 2023)',       src: 'Populations de référence INSEE 2023' },

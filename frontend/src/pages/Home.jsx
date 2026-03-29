@@ -9,7 +9,7 @@ import { loadCommunes } from '../hooks/useSearch.js'
 const CATEGORIES = [
   { icon: '🏪', label: 'Équipements',           desc: 'Commerces, services publics, équipements de proximité' },
   { icon: '🔒', label: 'Sécurité',              desc: 'Taux de criminalité 2024' },
-  { icon: '🏡', label: 'Accessibilité logement',desc: 'Prix m² vs médiane nationale' },
+  { icon: '🏡', label: 'Immobilier',            desc: 'Prix m² vs médiane nationale' },
   { icon: '🏥', label: 'Santé',                 desc: 'Accessibilité aux médecins généralistes' },
   { icon: '🎓', label: 'Éducation',             desc: 'IPS collèges + résultats brevet' },
   { icon: '🚆', label: 'Transports',            desc: 'Gare SNCF + arrêts bus/métro/tram' },
