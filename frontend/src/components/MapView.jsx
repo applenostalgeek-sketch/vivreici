@@ -245,9 +245,18 @@ export default function MapView({
           const lettre = pd?.lettre || p.lettre
           const scoreMedian = pd?.score_median ?? p.score_median
 
+          const zoomToDept = (layer) => {
+            map.fitBounds(layer.getBounds(), { padding: [30, 30] })
+            // Garantir qu'on atteint au moins le niveau commune
+            map.once('zoomend', () => {
+              if (map.getZoom() < POLYGON_ZOOM) map.setZoom(POLYGON_ZOOM)
+            })
+          }
+
           if (!lettre) {
             const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.5, fillOpacity: 0.35 } })
             layer.bindTooltip(`<strong>Dép. ${p.dept}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
+            layer.on('click', () => zoomToDept(layer))
             layer.addTo(deptLayer)
             continue
           }
@@ -255,6 +264,7 @@ export default function MapView({
           const color = SCORE_COLORS[lettre] || '#9CA3AF'
           const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 1, opacity: 0.6, fillOpacity: 0.55 } })
           layer.bindTooltip(`<strong>Dép. ${p.dept}</strong><br/>Score médian : ${Math.round(scoreMedian)}/100 (${p.nb_scorees} communes)`, { sticky: true })
+          layer.on('click', () => zoomToDept(layer))
           layer.addTo(deptLayer)
         }
       }
