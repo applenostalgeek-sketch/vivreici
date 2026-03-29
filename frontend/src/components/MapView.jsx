@@ -1,10 +1,32 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SCORE_COLORS, SCORE_LABELS, IRIS_ZOOM_THRESHOLD } from '../constants.js'
-import { loadCommunes } from '../hooks/useSearch.js'
+import { loadCommunes, loadCommunesScores } from '../hooks/useSearch.js'
+import { useProfile } from '../context/ProfileContext.jsx'
+import { PROFILES } from '../utils/profiles.js'
 
 // En dessous de ce zoom : cercles préchargés. Au-dessus : polygones IRIS.
 const POLYGON_ZOOM = 9
+
+// ── Helpers profil (pas de dépendance React) ──────────────────────────────────
+function _scoreToLettre(s) {
+  return s >= 80 ? 'A' : s >= 60 ? 'B' : s >= 40 ? 'C' : s >= 20 ? 'D' : 'E'
+}
+
+function _computeProfileScore(sous_scores, weights) {
+  if (!sous_scores || !weights) return null
+  const available = {}
+  for (const [cat, w] of Object.entries(weights)) {
+    const val = sous_scores[cat]
+    if (val != null && val >= 0) available[cat] = val
+  }
+  if (Object.keys(available).length === 0) return null
+  const totalW = Object.keys(available).reduce((s, cat) => s + weights[cat], 0)
+  const score = Object.entries(available).reduce(
+    (s, [cat, val]) => s + val * (weights[cat] / totalW), 0
+  )
+  return Math.round(score * 10) / 10
+}
 
 function getRadius(population, zoom) {
   const base = Math.log10(Math.max(population || 100, 100)) * 1.5
@@ -44,19 +66,26 @@ export default function MapView({
   const mapRef               = useRef(null)
   const leafletMap           = useRef(null)
   const leafletRef           = useRef(null)
-  const circleLayerRef       = useRef(null)   // cercles préchargés (non utilisés — conservés pour rollback)
-  const circleMarkersRef     = useRef([])      // [{circle, commune}] pour le filtre
-  const deptLayerRef         = useRef(null)   // polygones départements (zoom < POLYGON_ZOOM)
-  const renderDeptsRef       = useRef(null)   // fn pour rafraîchir filtre dept
-  const communePolyLayerRef  = useRef(null)   // polygones communes (POLYGON_ZOOM <= zoom < IRIS)
-  const irisLayerRef         = useRef(null)   // polygones IRIS (zoom >= IRIS_ZOOM_THRESHOLD)
-  const markerLayerRef       = useRef(null)   // pin adresse
+  const circleLayerRef       = useRef(null)
+  const circleMarkersRef     = useRef([])
+  const deptLayerRef         = useRef(null)
+  const renderDeptsRef       = useRef(null)
+  const communePolyLayerRef  = useRef(null)
+  const irisLayerRef         = useRef(null)
+  const markerLayerRef       = useRef(null)
   const activeLettersRef     = useRef(new Set(['A', 'B', 'C', 'D', 'E']))
   const chargerCommunePolyRef = useRef(null)
   const chargerIrisRef        = useRef(null)
   const lastCommunePolyBbox  = useRef('')
   const lastIrisBbox         = useRef('')
+
+  // Profil
+  const profileRef           = useRef('national')
+  const scoresMapRef         = useRef(null)          // Map<code_insee, {sous_scores}>
+  const deptProfileRef       = useRef(null)          // Map<dept, {score_median, lettre}> pour profil
+
   const navigate             = useNavigate()
+  const { profile }          = useProfile()
 
   const [irisMode, setIrisMode]             = useState(false)
   const [polyMode, setPolyMode]             = useState(false)
@@ -71,7 +100,7 @@ export default function MapView({
     })
   }, [])
 
-  // Sync ref + recharge la couche active
+  // Sync activeLetters ref + recharge la couche active
   useEffect(() => {
     activeLettersRef.current = activeLetters
     const map = leafletMap.current
@@ -82,10 +111,60 @@ export default function MapView({
     } else if (zoom >= POLYGON_ZOOM) {
       lastCommunePolyBbox.current = ''; chargerCommunePolyRef.current?.()
     } else {
-      // Dept : rafraîchir le filtre depuis les données cachées
       renderDeptsRef.current?.()
     }
   }, [activeLetters])
+
+  // Sync profil → pré-calcule les scores profil + recharge les couches
+  useEffect(() => {
+    profileRef.current = profile
+    const map = leafletMap.current
+    if (!map) return
+
+    async function updateForProfile() {
+      const weights = profile !== 'national' ? PROFILES[profile]?.weights : null
+
+      if (weights) {
+        const [communes, sMap] = await Promise.all([loadCommunes(), loadCommunesScores()])
+        scoresMapRef.current = sMap
+
+        // Pré-calcul scores profil par département (médiane)
+        const deptBuckets = {}
+        for (const c of communes) {
+          const dept = c.departement
+          if (!dept) continue
+          const s = sMap.get(c.code_insee)
+          if (!s?.sous_scores) continue
+          const ps = _computeProfileScore(s.sous_scores, weights)
+          if (ps == null) continue
+          if (!deptBuckets[dept]) deptBuckets[dept] = []
+          deptBuckets[dept].push(ps)
+        }
+        const deptResult = {}
+        for (const [dept, scores] of Object.entries(deptBuckets)) {
+          const sorted = [...scores].sort((a, b) => a - b)
+          const median = sorted[Math.floor(sorted.length / 2)]
+          deptResult[dept] = { score_median: median, lettre: _scoreToLettre(median) }
+        }
+        deptProfileRef.current = deptResult
+      } else {
+        scoresMapRef.current = null
+        deptProfileRef.current = null
+      }
+
+      // Rafraîchir la couche active
+      const zoom = map.getZoom()
+      if (zoom >= IRIS_ZOOM_THRESHOLD) {
+        lastIrisBbox.current = ''; chargerIrisRef.current?.()
+      } else if (zoom >= POLYGON_ZOOM) {
+        lastCommunePolyBbox.current = ''; chargerCommunePolyRef.current?.()
+      } else {
+        renderDeptsRef.current?.()
+      }
+    }
+
+    updateForProfile()
+  }, [profile])
 
   // Mise à jour du marker pin
   useEffect(() => {
@@ -141,8 +220,7 @@ export default function MapView({
         m.addTo(markerLayer)
       }
 
-      // ── Couche cercles (préchargés) ──────────────────────────────────────────
-      // Cercles conservés pour rollback — non affichés (remplacés par deptLayer)
+      // ── Couche cercles (conservés pour rollback) ─────────────────────────────
       const circleLayer = L.layerGroup()
       circleLayerRef.current = circleLayer
 
@@ -157,18 +235,26 @@ export default function MapView({
         if (!deptData) return
         deptLayer.clearLayers()
         const letters = activeLettersRef.current
+        const deptProfile = deptProfileRef.current  // null si profil national
+
         for (const feature of deptData.features) {
           const p = feature.properties
-          if (!p.lettre) {
+
+          // Score à afficher : profil si dispo, sinon national
+          const pd = deptProfile?.[p.dept]
+          const lettre = pd?.lettre || p.lettre
+          const scoreMedian = pd?.score_median ?? p.score_median
+
+          if (!lettre) {
             const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.5, fillOpacity: 0.35 } })
             layer.bindTooltip(`<strong>Dép. ${p.dept}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
             layer.addTo(deptLayer)
             continue
           }
-          if (!letters.has(p.lettre)) continue
-          const color = SCORE_COLORS[p.lettre] || '#9CA3AF'
+          if (!letters.has(lettre)) continue
+          const color = SCORE_COLORS[lettre] || '#9CA3AF'
           const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 1, opacity: 0.6, fillOpacity: 0.55 } })
-          layer.bindTooltip(`<strong>Dép. ${p.dept}</strong><br/>Score médian : ${Math.round(p.score_median)}/100 (${p.nb_scorees} communes)`, { sticky: true })
+          layer.bindTooltip(`<strong>Dép. ${p.dept}</strong><br/>Score médian : ${Math.round(scoreMedian)}/100 (${p.nb_scorees} communes)`, { sticky: true })
           layer.addTo(deptLayer)
         }
       }
@@ -182,7 +268,7 @@ export default function MapView({
       // ── Couche polygones communes (zoom intermédiaire POLYGON_ZOOM..IRIS_ZOOM) ──
       const communePolyLayer = L.layerGroup()
       communePolyLayerRef.current = communePolyLayer
-      const deptCache = {}  // dept → FeatureCollection (cache en mémoire)
+      const deptCache = {}
 
       async function chargerCommunePoly() {
         const b = map.getBounds()
@@ -206,24 +292,35 @@ export default function MapView({
               if (fetches[i].status === 'fulfilled' && fetches[i].value) deptCache[dept] = fetches[i].value
             })
           } else if (bboxKey !== lastCommunePolyBbox.current) return
+
           communePolyLayer.clearLayers()
           const letters = activeLettersRef.current
+          const sMap = scoresMapRef.current
+          const weights = profileRef.current !== 'national' ? PROFILES[profileRef.current]?.weights : null
+
           for (const dept of depts) {
             const fc = deptCache[dept]
             if (!fc) continue
             for (const feature of fc.features) {
               const p = feature.properties
-              if (!p.lettre) {
+
+              // Score profil si dispo
+              const ss = sMap?.get(p.code_insee)?.sous_scores
+              const ps = weights && ss ? _computeProfileScore(ss, weights) : null
+              const lettre = ps != null ? _scoreToLettre(ps) : p.lettre
+              const scoreGlobal = ps ?? p.score_global
+
+              if (!lettre) {
                 const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 0.8, opacity: 0.5, fillOpacity: 0.35 } })
                 layer.bindTooltip(`<strong>${p.nom}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
                 layer.on('click', () => navigate(`/commune/${p.code_insee}?tab=detail`))
                 layer.addTo(communePolyLayer)
                 continue
               }
-              if (!letters.has(p.lettre)) continue
-              const color = SCORE_COLORS[p.lettre] || '#9CA3AF'
+              if (!letters.has(lettre)) continue
+              const color = SCORE_COLORS[lettre] || '#9CA3AF'
               const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 0.8, opacity: 0.6, fillOpacity: 0.55 } })
-              layer.bindTooltip(makeTooltip(p.nom, p.lettre, p.score_global, p.population), { sticky: true })
+              layer.bindTooltip(makeTooltip(p.nom, lettre, scoreGlobal, p.population), { sticky: true })
               layer.on('click', () => navigate(`/commune/${p.code_insee}?tab=detail`))
               layer.addTo(communePolyLayer)
             }
@@ -251,24 +348,32 @@ export default function MapView({
           const fetches = await Promise.allSettled(
             codes.map(code => fetch(`/data/iris-map/${code}.json`).then(r => r.ok ? r.json() : null))
           )
-          if (bboxKey !== lastIrisBbox.current) return  // vue changée pendant le fetch
+          if (bboxKey !== lastIrisBbox.current) return
           irisLayer.clearLayers()
           const letters = activeLettersRef.current
-          const communesAvecIris = new Set()
+          const sMap = scoresMapRef.current
+          const weights = profileRef.current !== 'national' ? PROFILES[profileRef.current]?.weights : null
+
           for (let i = 0; i < fetches.length; i++) {
             const result = fetches[i]
             if (result.status !== 'fulfilled' || !result.value) continue
             for (const feature of result.value.features) {
               const z = feature.properties
-              // Pour les IRIS type Z (commune entière), utiliser le score commune
-              // pour la couleur — évite la discordance IRIS D vs commune A
               const isZ = z.typ_iris === 'Z'
               const commune = isZ ? visibles.find(c => c.code_insee === z.code_iris.slice(0, 5)) : null
-              const lettre = isZ ? (commune?.lettre || z.lettre) : z.lettre
-              const scoreGlobal = isZ ? (commune?.score_global ?? z.score_global) : z.score_global
-              communesAvecIris.add(codes[i])
 
-              // IRIS sans données suffisantes → gris neutre, hors filtre A-E
+              // Score profil : utilise les sous-scores de la commune parente (meilleure approximation disponible)
+              const communeCode = z.code_iris.slice(0, 5)
+              const ss = sMap?.get(communeCode)?.sous_scores
+              const ps = weights && ss ? _computeProfileScore(ss, weights) : null
+
+              const lettre = ps != null
+                ? _scoreToLettre(ps)
+                : (isZ ? (commune?.lettre || z.lettre) : z.lettre)
+              const scoreGlobal = ps != null
+                ? ps
+                : (isZ ? (commune?.score_global ?? z.score_global) : z.score_global)
+
               if (!lettre) {
                 const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.65, fillOpacity: 0.45 } })
                 layer.bindTooltip(`<strong>${z.nom}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
@@ -291,9 +396,6 @@ export default function MapView({
               layer.addTo(irisLayer)
             }
           }
-          // Communes sans polygone IRIS (trop petites pour être découpées par l'IGN)
-          // → non affichées en mode IRIS pour éviter les cercles incongrus au milieu des polygones
-          // → toujours visibles en mode cercles (zoom < IRIS_ZOOM_THRESHOLD) et via la recherche
         } catch {}
       }
       chargerIrisRef.current = chargerIris
@@ -305,7 +407,6 @@ export default function MapView({
         const zoom = map.getZoom()
 
         if (zoom >= IRIS_ZOOM_THRESHOLD) {
-          // Mode IRIS
           if (map.hasLayer(deptLayer)) deptLayer.removeFrom(map)
           if (map.hasLayer(communePolyLayer)) communePolyLayer.removeFrom(map)
           if (!map.hasLayer(irisLayer)) irisLayer.addTo(map)
@@ -313,7 +414,6 @@ export default function MapView({
           debounceTimer = setTimeout(chargerIris, 200)
           setIrisMode(true); setPolyMode(false)
         } else if (zoom >= POLYGON_ZOOM) {
-          // Mode polygones communes
           if (map.hasLayer(irisLayer)) { irisLayer.removeFrom(map); irisLayer.clearLayers(); lastIrisBbox.current = '' }
           if (map.hasLayer(deptLayer)) deptLayer.removeFrom(map)
           if (!map.hasLayer(communePolyLayer)) communePolyLayer.addTo(map)
@@ -322,7 +422,6 @@ export default function MapView({
           debounceTimer = setTimeout(chargerCommunePoly, 200)
           setIrisMode(false); setPolyMode(true)
         } else {
-          // Mode départements
           if (map.hasLayer(irisLayer)) { irisLayer.removeFrom(map); irisLayer.clearLayers(); lastIrisBbox.current = '' }
           if (map.hasLayer(communePolyLayer)) { communePolyLayer.removeFrom(map); communePolyLayer.clearLayers(); lastCommunePolyBbox.current = '' }
           if (!map.hasLayer(deptLayer)) deptLayer.addTo(map)
@@ -339,7 +438,6 @@ export default function MapView({
         else if (zoom >= POLYGON_ZOOM)   debounceTimer = setTimeout(chargerCommunePoly, 300)
       })
 
-      // Chargement initial selon le zoom de départ
       if (initialZoom >= IRIS_ZOOM_THRESHOLD) {
         irisLayer.addTo(map)
         setIrisMode(true)
@@ -350,7 +448,6 @@ export default function MapView({
         setPolyMode(true)
         chargerCommunePoly()
       }
-      // else: zoom < POLYGON_ZOOM → deptLayer déjà ajouté ci-dessus
     })
 
     return () => {
@@ -365,12 +462,22 @@ export default function MapView({
     ? 'Zoomez pour voir les quartiers'
     : 'Zoomez pour accéder aux fiches communes'
 
+  const isCustomProfile = profile !== 'national'
+  const profileLabel = isCustomProfile ? `${PROFILES[profile].emoji} ${PROFILES[profile].label}` : null
+
   return (
     <div className={`relative ${className}`}>
       <div ref={mapRef} className="w-full h-full" />
 
       <div className="absolute bottom-4 left-3 z-[1000] bg-white/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-lg">
-        <p className="text-xs font-semibold text-ink mb-2 uppercase tracking-wider">{modeLabel}</p>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <p className="text-xs font-semibold text-ink uppercase tracking-wider">{modeLabel}</p>
+          {profileLabel && (
+            <span className="text-xs font-medium text-paper bg-ink rounded-full px-2 py-0.5 whitespace-nowrap">
+              {profileLabel}
+            </span>
+          )}
+        </div>
         <div className="space-y-1.5">
           {Object.entries(SCORE_COLORS).map(([lettre, color]) => (
             <button
