@@ -43,7 +43,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-paper">
 
       {/* ── HERO SOMBRE ────────────────────────────────────────────── */}
-      <div className="hero-dark relative overflow-hidden">
+      <div className="hero-dark relative overflow-x-hidden">
         {/* Nav transparente sur fond sombre */}
         <nav className="flex items-center justify-between px-6 py-5 relative z-10">
           <span className="font-display text-xl tracking-tight text-paper">
