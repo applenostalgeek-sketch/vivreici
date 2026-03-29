@@ -2,30 +2,80 @@ import { Link } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
 
 const LETTRES = [
-  { l: 'A', range: '80 – 100', interp: 'Top 20 % national',        cls: 'text-score-A' },
-  { l: 'B', range: '60 – 79',  interp: 'Au-dessus de la médiane',  cls: 'text-score-B' },
-  { l: 'C', range: '40 – 59',  interp: 'Dans la moyenne',          cls: 'text-score-C' },
-  { l: 'D', range: '20 – 39',  interp: 'En dessous de la médiane', cls: 'text-score-D' },
-  { l: 'E', range: '0 – 19',   interp: 'Bas 20 % national',        cls: 'text-score-E' },
+  { l: 'A', range: '80 – 100', interp: 'Top 20 % national',        cls: 'text-score-A', bg: 'bg-score-A/10' },
+  { l: 'B', range: '60 – 79',  interp: 'Au-dessus de la médiane',  cls: 'text-score-B', bg: 'bg-score-B/10' },
+  { l: 'C', range: '40 – 59',  interp: 'Dans la moyenne',          cls: 'text-score-C', bg: 'bg-score-C/10' },
+  { l: 'D', range: '20 – 39',  interp: 'En dessous de la médiane', cls: 'text-score-D', bg: 'bg-score-D/10' },
+  { l: 'E', range: '0 – 19',   interp: 'Bas 20 % national',        cls: 'text-score-E', bg: 'bg-score-E/10' },
 ]
 
 const CATEGORIES = [
-  { icon: '🏪', nom: 'Équipements',      poids: 18, detail: 'Commerces, services et équipements de proximité',          src: 'BPE 2024 INSEE' },
-  { icon: '🚆', nom: 'Transports',       poids: 16, detail: 'Distance gare SNCF + densité arrêts bus, métro, tram',     src: 'SNCF · transport.data.gouv.fr' },
-  { icon: '🏥', nom: 'Santé',            poids: 16, detail: 'Accessibilité médecins généralistes (zone d\'attraction)', src: 'APL 2023 DREES' },
-  { icon: '🔒', nom: 'Sécurité',         poids: 12, detail: 'Taux de criminalité (score inversé — moins = mieux)',      src: 'SSMSI 2024' },
-  { icon: '🏡', nom: 'Immobilier',       poids: 12, detail: 'Prix au m² médian (score inversé — moins cher = mieux)',   src: 'DVF 2024 DGFiP' },
-  { icon: '⚠️', nom: 'Risques naturels', poids:  8, detail: 'PPR approuvés — inondation (35 %), séisme (30 %), mouvement de terrain (20 %), feux de forêt (10 %), avalanche (5 %). Score inversé : moins de risques = mieux.', src: 'GASPAR Géorisques' },
-  { icon: '🎓', nom: 'Éducation',        poids:  7, detail: 'IPS collèges (40 %) + résultats brevet DNB (40 %) + lycées pro (20 %)', src: 'DEPP 2021-2025' },
-  { icon: '🌿', nom: 'Environnement',    poids:  7, detail: 'Part d\'espaces naturels et agricoles non artificialisés', src: 'CEREMA 2023' },
-  { icon: '📈', nom: 'Démographie',      poids:  4, detail: 'Évolution de la population sur 6 ans (2017 → 2023)',       src: 'Populations de référence INSEE 2023' },
+  { icon: '🏪', nom: 'Équipements',      poids: 20, detail: 'Commerces, services et équipements de proximité',                                        src: 'BPE 2024 INSEE' },
+  { icon: '🚆', nom: 'Transports',       poids: 18, detail: 'Distance gare SNCF + densité arrêts bus, métro, tram',                                   src: 'SNCF · transport.data.gouv.fr' },
+  { icon: '🏥', nom: 'Santé',            poids: 18, detail: 'Accessibilité médecins généralistes (zone d\'attraction)',                               src: 'APL 2023 DREES' },
+  { icon: '🔒', nom: 'Sécurité',         poids: 14, detail: 'Taux de criminalité — score inversé (moins = mieux)',                                    src: 'SSMSI 2024' },
+  { icon: '🏡', nom: 'Immobilier',       poids: 14, detail: 'Prix au m² médian — score inversé (moins cher = mieux)',                                 src: 'DVF 2024 DGFiP' },
+  { icon: '⚠️', nom: 'Risques naturels', poids:  8, detail: 'PPR approuvés — inondation (35 %), séisme (30 %), mouvement de terrain (20 %), feux de forêt (10 %), avalanche (5 %)',  src: 'GASPAR Géorisques' },
+  { icon: '🎓', nom: 'Éducation',        poids:  7, detail: 'IPS collèges (40 %) + résultats brevet DNB (40 %) + lycées pro (20 %)',                  src: 'DEPP 2021-2025' },
+  { icon: '🌿', nom: 'Environnement',    poids:  7, detail: 'Part d\'espaces naturels et agricoles non artificialisés',                               src: 'CEREMA 2023' },
+  { icon: '📈', nom: 'Démographie',      poids:  4, detail: 'Évolution de la population sur 6 ans (2017 → 2023)',                                     src: 'Populations de référence INSEE 2023' },
+]
+
+const MAX_POIDS = 20
+
+const PROFILES = [
+  {
+    emoji: '👪', label: 'Famille',
+    desc: 'Priorité à l\'école, à la sécurité et aux services du quotidien.',
+    top: [
+      { nom: 'Éducation',  poids: 27, icon: '🎓' },
+      { nom: 'Sécurité',   poids: 22, icon: '🔒' },
+      { nom: 'Équipements',poids: 18, icon: '🏪' },
+    ],
+  },
+  {
+    emoji: '⚡', label: 'Jeune actif',
+    desc: 'Se déplacer vite, se loger à prix raisonnable, profiter de la ville.',
+    top: [
+      { nom: 'Transports',  poids: 30, icon: '🚆' },
+      { nom: 'Immobilier',  poids: 26, icon: '🏡' },
+      { nom: 'Équipements', poids: 18, icon: '🏪' },
+    ],
+  },
+  {
+    emoji: '🌿', label: 'Calme',
+    desc: 'Nature, tranquillité, coût de la vie maîtrisé.',
+    top: [
+      { nom: 'Environnement', poids: 28, icon: '🌿' },
+      { nom: 'Immobilier',    poids: 20, icon: '🏡' },
+      { nom: 'Sécurité',      poids: 18, icon: '🔒' },
+    ],
+  },
+  {
+    emoji: '☀️', label: 'Retraite',
+    desc: 'Accès aux soins, sécurité et cadre de vie agréable.',
+    top: [
+      { nom: 'Santé',         poids: 32, icon: '🏥' },
+      { nom: 'Sécurité',      poids: 22, icon: '🔒' },
+      { nom: 'Environnement', poids: 16, icon: '🌿' },
+    ],
+  },
+  {
+    emoji: '💰', label: 'Budget',
+    desc: 'Le prix au m² avant tout, sans sacrifier la mobilité.',
+    top: [
+      { nom: 'Immobilier',  poids: 40, icon: '🏡' },
+      { nom: 'Transports',  poids: 16, icon: '🚆' },
+      { nom: 'Équipements', poids: 15, icon: '🏪' },
+    ],
+  },
 ]
 
 const LIMITES = [
-  'Le cadre de vie, l\'ambiance du quartier, les projets d\'urbanisme ou vos préférences personnelles. Une commune C peut être le meilleur choix pour vous.',
-  'Les revenus ne sont pas dans le score — affichés en information uniquement, pour ne pas avantager les communes aisées au détriment des autres.',
-  'Les petites communes rurales ont souvent moins de données disponibles. Le score repose alors sur 3 à 5 catégories au lieu de 9.',
-  'Les risques naturels sont basés sur les PPR approuvés (GASPAR). Absence de PPR ne signifie pas absence de risque — certaines communes exposées n\'ont pas encore fait l\'objet d\'une procédure réglementaire.',
+  { titre: 'Le cadre de vie', txt: 'L\'ambiance du quartier, les projets d\'urbanisme ou vos préférences personnelles ne sont pas mesurables. Une commune C peut être le meilleur choix pour vous.' },
+  { titre: 'Les revenus', txt: 'Volontairement exclus du score — affichés en information uniquement, pour ne pas avantager les communes aisées au détriment des autres.' },
+  { titre: 'Petites communes', txt: 'Les communes rurales ont souvent moins de données disponibles. Le score repose alors sur 3 à 5 catégories au lieu de 9.' },
+  { titre: 'Risques naturels', txt: 'Basés sur les PPR approuvés (GASPAR). L\'absence de PPR ne signifie pas l\'absence de risque — certaines communes exposées n\'ont pas encore fait l\'objet d\'une procédure réglementaire.' },
 ]
 
 export default function Methode() {
@@ -40,45 +90,84 @@ export default function Methode() {
           Comment le score est calculé, ce qu'il mesure, et ses limites.
         </p>
 
-        {/* Le score */}
+        {/* Le score A–E */}
         <section className="bg-white border border-border rounded-2xl p-6 mb-4">
-          <h2 className="font-display text-xl text-ink mb-3">Le score</h2>
+          <h2 className="font-display text-xl text-ink mb-1">Le score</h2>
           <p className="text-sm text-ink-light leading-relaxed mb-6">
             Chaque commune est comparée à l'ensemble des communes françaises par percentile.
             Un score de <strong className="text-ink">80</strong> signifie que la commune fait mieux que 80 % des communes.
             La médiane nationale est à <strong className="text-ink">50</strong> par construction.
             Le score global est une moyenne pondérée des 9 catégories ci-dessous.
           </p>
-          <table className="w-full text-sm border-collapse">
-            <tbody className="divide-y divide-border">
-              {LETTRES.map(({ l, range, interp, cls }) => (
-                <tr key={l}>
-                  <td className="py-2.5 pr-4 w-8">
-                    <span className={`font-display font-bold text-lg ${cls}`}>{l}</span>
-                  </td>
-                  <td className="py-2.5 pr-6 font-mono text-ink text-sm w-24">{range}</td>
-                  <td className="py-2.5 text-ink-light text-sm">{interp}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="space-y-2">
+            {LETTRES.map(({ l, range, interp, cls, bg }) => (
+              <div key={l} className={`flex items-center gap-4 rounded-xl px-4 py-2.5 ${bg}`}>
+                <span className={`font-display font-bold text-2xl w-6 text-center ${cls}`}>{l}</span>
+                <span className="font-mono text-sm text-ink w-20">{range}</span>
+                <span className="text-sm text-ink-light">{interp}</span>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Catégories */}
         <section className="bg-white border border-border rounded-2xl p-6 mb-4">
           <h2 className="font-display text-xl text-ink mb-1">Les 9 catégories</h2>
-          <p className="text-xs text-ink-light mb-5">Poids dans le score global entre parenthèses.</p>
-          <div className="space-y-4">
+          <p className="text-xs text-ink-light mb-6">Poids dans le score national entre parenthèses.</p>
+          <div className="space-y-5">
             {CATEGORIES.map(({ icon, nom, poids, detail, src }) => (
               <div key={nom} className="flex gap-3">
                 <span className="text-base flex-shrink-0 w-6 mt-0.5">{icon}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-medium text-ink">{nom}</span>
-                    <span className="text-xs text-ink-light">({poids} %)</span>
+                    <span className="text-xs text-ink-light">{poids} %</span>
+                    <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-ink/20 rounded-full"
+                        style={{ width: `${(poids / MAX_POIDS) * 100}%` }}
+                      />
+                    </div>
                   </div>
                   <p className="text-xs text-ink-light leading-relaxed">{detail}</p>
-                  <p className="text-xs font-mono text-ink-light/50 mt-0.5">{src}</p>
+                  <p className="text-xs font-mono text-ink-light/40 mt-0.5">{src}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Profils */}
+        <section className="bg-white border border-border rounded-2xl p-6 mb-4">
+          <h2 className="font-display text-xl text-ink mb-1">Les profils</h2>
+          <p className="text-sm text-ink-light leading-relaxed mb-6">
+            Les profils recalculent le score en réattribuant les poids selon vos priorités.
+            Le score national reste toujours affiché en référence — le profil s'y ajoute,
+            jamais à sa place. Sélectionnable depuis la carte ou la recherche.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {PROFILES.map(({ emoji, label, desc, top }) => (
+              <div key={label} className="border border-border rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">{emoji}</span>
+                  <span className="font-medium text-ink text-sm">{label}</span>
+                </div>
+                <p className="text-xs text-ink-light mb-3 leading-relaxed">{desc}</p>
+                <div className="space-y-1.5">
+                  {top.map(({ nom, poids, icon }, i) => (
+                    <div key={nom} className="flex items-center gap-2">
+                      <span className="text-xs text-ink-muted w-3">{i + 1}</span>
+                      <span className="text-xs">{icon}</span>
+                      <span className="text-xs text-ink flex-1">{nom}</span>
+                      <span className="text-xs font-mono text-ink-light">{poids} %</span>
+                      <div className="w-12 h-1 bg-border rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-ink/30 rounded-full"
+                          style={{ width: `${(poids / 40) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -89,26 +178,32 @@ export default function Methode() {
         <section className="bg-white border border-border rounded-2xl p-6 mb-4">
           <h2 className="font-display text-xl text-ink mb-3">Les quartiers (IRIS)</h2>
           <p className="text-sm text-ink-light leading-relaxed">
-            En zoomant sur la carte, chaque commune est découpée en quartiers IRIS — les zones géographiques de référence de l'INSEE (~2 000 habitants chacune).
+            En zoomant sur la carte, chaque commune est découpée en quartiers IRIS —
+            les zones géographiques de référence de l'INSEE (~2 000 habitants chacune).
             48 569 quartiers sont disponibles sur toute la France.
           </p>
           <p className="text-sm text-ink-light leading-relaxed mt-3">
-            Les quartiers sont scorés sur <strong className="text-ink">7 catégories</strong> : équipements, santé et immobilier sont mesurés localement au niveau du quartier.
-            Sécurité, transports, éducation et risques naturels reprennent le score de la commune parente (ces données ne sont pas disponibles à l'échelle du quartier).
+            Les quartiers sont scorés sur <strong className="text-ink">7 catégories</strong> :
+            équipements, santé et immobilier sont mesurés localement.
+            Sécurité, transports, éducation et risques naturels reprennent le score
+            de la commune parente (ces données ne sont pas disponibles à l'échelle du quartier).
           </p>
         </section>
 
         {/* Limites */}
         <section className="bg-white border border-border rounded-2xl p-6 mb-4">
           <h2 className="font-display text-xl text-ink mb-4">Ce que le score ne mesure pas</h2>
-          <ul className="space-y-3">
-            {LIMITES.map((txt, i) => (
-              <li key={i} className="flex gap-3 text-sm text-ink-light">
-                <span className="flex-shrink-0 font-mono text-ink">—</span>
-                <span className="leading-relaxed">{txt}</span>
-              </li>
+          <div className="space-y-4">
+            {LIMITES.map(({ titre, txt }) => (
+              <div key={titre} className="flex gap-3">
+                <span className="flex-shrink-0 font-mono text-ink mt-0.5">—</span>
+                <div>
+                  <span className="text-sm font-medium text-ink">{titre} </span>
+                  <span className="text-sm text-ink-light leading-relaxed">{txt}</span>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
 
         <p className="text-center text-xs text-ink-light pt-2">
@@ -116,6 +211,7 @@ export default function Methode() {
         </p>
 
       </main>
+
       <footer className="border-t border-border px-6 py-5 text-center text-xs text-ink-light">
         lebonquartier · open data français · 2026 ·{' '}
         <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
