@@ -362,17 +362,18 @@ export default function MapView({
               const isZ = z.typ_iris === 'Z'
               const commune = isZ ? visibles.find(c => c.code_insee === z.code_iris.slice(0, 5)) : null
 
-              // Score profil : utilise les sous-scores de la commune parente (meilleure approximation disponible)
+              // Score national de référence pour cet IRIS
+              const nationalLettre = isZ ? (commune?.lettre || z.lettre) : z.lettre
+              const nationalScore  = isZ ? (commune?.score_global ?? z.score_global) : z.score_global
+
+              // Score profil : uniquement si l'IRIS a déjà un score national
+              // (évite d'inventer un score pour les IRIS sans données locales)
               const communeCode = z.code_iris.slice(0, 5)
               const ss = sMap?.get(communeCode)?.sous_scores
-              const ps = weights && ss ? _computeProfileScore(ss, weights) : null
+              const ps = weights && ss && nationalLettre ? _computeProfileScore(ss, weights) : null
 
-              const lettre = ps != null
-                ? _scoreToLettre(ps)
-                : (isZ ? (commune?.lettre || z.lettre) : z.lettre)
-              const scoreGlobal = ps != null
-                ? ps
-                : (isZ ? (commune?.score_global ?? z.score_global) : z.score_global)
+              const lettre = ps != null ? _scoreToLettre(ps) : nationalLettre
+              const scoreGlobal = ps ?? nationalScore
 
               if (!lettre) {
                 const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.65, fillOpacity: 0.45 } })
