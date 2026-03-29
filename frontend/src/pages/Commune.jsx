@@ -343,81 +343,57 @@ export default function Commune() {
                 const td = db.transport_detail
                 const nomGare = db.nom_gare
                 const distGare = db.distance_gare_km
-                // Si une gare est affichée, masquer les lignes ferroviaires (type 2 = RER/TER) — redondant
-                const lignes = (td?.lignes || []).filter(l => !nomGare || l.type_code !== 2)
+                const lignes = td?.lignes || []
 
                 if (!nomGare && !lignes.length) return null
 
-                const TYPE_ORDER = [1, 0, 11, 12, 4, 3]
-                const groups = {}
-                for (const l of lignes) {
-                  const k = l.type_code
-                  if (!groups[k]) groups[k] = { type_code: k, type_label: l.type_label, icon: l.icon, lignes: [] }
-                  groups[k].lignes.push(l)
+                // Types de TC présents (hors rail type 2, déjà couvert par la gare)
+                const TYPE_META = {
+                  1:   { label: 'Métro',      icon: '🚇' },
+                  0:   { label: 'Tramway',    icon: '🚃' },
+                  11:  { label: 'Tramway',    icon: '🚃' },
+                  12:  { label: 'Monorail',   icon: '🚝' },
+                  4:   { label: 'Ferry',      icon: '⛴️' },
+                  3:   { label: 'Bus',        icon: '🚌' },
+                  7:   { label: 'Bus',        icon: '🚌' },
+                  700: { label: 'Bus',        icon: '🚌' },
+                  702: { label: 'Bus',        icon: '🚌' },
                 }
-                const orderedGroups = TYPE_ORDER
-                  .filter(k => groups[k])
-                  .map(k => groups[k])
+                const presentTypes = []
+                const seen = new Set()
+                for (const l of lignes) {
+                  if (l.type_code === 2) continue  // rail = couvert par la gare
+                  const meta = TYPE_META[l.type_code]
+                  if (meta && !seen.has(meta.label)) {
+                    seen.add(meta.label)
+                    presentTypes.push(meta)
+                  }
+                }
+
+                const gareLabel = nomGare && !['2A', '2B'].includes(data.departement)
+                  ? (distGare >= 2 ? `${nomGare} — ${distGare} km` : nomGare)
+                  : null
 
                 return (
                   <div className="bg-white rounded-2xl border border-border p-6">
                     <h2 className="font-display text-xl text-ink mb-4">Transports en commun</h2>
-
-                    {nomGare && !['2A', '2B'].includes(data.departement) && (
-                      <div className="flex items-center gap-2 mb-4 text-sm flex-wrap">
-                        <span>🚉</span>
-                        <span className="text-ink-light">Gare la plus proche :</span>
-                        <span className="font-medium text-ink">{nomGare}</span>
-                        {distGare !== null && distGare !== undefined && (
-                          <span className="text-ink-muted">
-                            ({distGare < 1 ? '< 1 km' : `${distGare} km`})
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {orderedGroups.length > 0 && (
-                      <div className="space-y-2">
-                        {orderedGroups.map(g => {
-                          const MAX_SHOWN_BUS = 5
-                          const shown = g.type_code === 3 ? g.lignes.slice(0, MAX_SHOWN_BUS) : g.lignes
-                          const extra = g.type_code === 3 ? Math.max(0, g.lignes.length - MAX_SHOWN_BUS) : 0
-                          return (
-                            <div key={g.type_label} className="flex items-start gap-2">
-                              <span className="text-sm flex-shrink-0 mt-0.5">{g.icon}</span>
-                              <div className="flex flex-wrap gap-1">
-                                {shown.map((l, i) => {
-                                  // Rail (type 2) : afficher le trajet (nom), pas le code mission SNCF (short)
-                                  // Metro/tram/bus : short est le vrai nom commercial ("6", "T2", "30")
-                                  const raw = l.type_code === 2
-                                    ? (l.nom || l.short || '?')
-                                    : (l.short || l.nom || '?')
-                                  const label = raw.length > 22 ? raw.slice(0, 21) + '…' : raw
-                                  const tooltip = l.nom && l.nom.length > 22 ? l.nom : ''
-                                  return (
-                                    <span
-                                      key={i}
-                                      title={tooltip}
-                                      className="text-xs bg-surface-alt text-ink-light px-2 py-0.5 rounded-full border border-border cursor-default"
-                                    >
-                                      {label}
-                                    </span>
-                                  )
-                                })}
-                                {extra > 0 && (
-                                  <span className="text-xs text-ink-muted px-2 py-0.5">+{extra} lignes</span>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-
-                    {!orderedGroups.length && (
+                    <div className="flex flex-wrap gap-2">
+                      {gareLabel && (
+                        <span className="inline-flex items-center gap-1.5 text-sm bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-full">
+                          <span>🚉</span>
+                          <span>{gareLabel}</span>
+                        </span>
+                      )}
+                      {presentTypes.map(m => (
+                        <span key={m.label} className="inline-flex items-center gap-1.5 text-sm bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-full">
+                          <span>{m.icon}</span>
+                          <span>{m.label}</span>
+                        </span>
+                      ))}
+                    </div>
+                    {!gareLabel && !presentTypes.length && (
                       <p className="text-sm text-ink-light">Aucune ligne de transport en commun connue.</p>
                     )}
-
                     <p className="text-xs text-ink-muted mt-4">Source : GTFS transport.data.gouv.fr</p>
                   </div>
                 )
