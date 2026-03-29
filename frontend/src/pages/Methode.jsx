@@ -10,20 +10,22 @@ const LETTRES = [
 ]
 
 const CATEGORIES = [
-  { icon: '🏪', nom: 'Équipements',   poids: 20, detail: 'Commerces, services et équipements de proximité',          src: 'BPE 2024 INSEE' },
-  { icon: '🚆', nom: 'Transports',    poids: 17, detail: 'Distance gare SNCF + densité arrêts bus, métro, tram',     src: 'SNCF · transport.data.gouv.fr' },
-  { icon: '🏥', nom: 'Santé',         poids: 17, detail: 'Accessibilité médecins généralistes (zone d\'attraction)', src: 'APL 2023 DREES' },
-  { icon: '🔒', nom: 'Sécurité',      poids: 13, detail: 'Taux de criminalité (score inversé — moins = mieux)',      src: 'SSMSI 2024' },
-  { icon: '🏡', nom: 'Immobilier',    poids: 13, detail: 'Prix au m² médian (score inversé — moins cher = mieux)',   src: 'DVF 2024 DGFiP' },
-  { icon: '🎓', nom: 'Éducation',     poids:  8, detail: 'IPS collèges (40 %) + résultats brevet DNB (40 %) + lycées pro (20 %)', src: 'DEPP 2021-2025' },
-  { icon: '🌿', nom: 'Environnement', poids:  8, detail: 'Part d\'espaces naturels et agricoles non artificialisés', src: 'CEREMA 2023' },
-  { icon: '📈', nom: 'Démographie',   poids:  4, detail: 'Évolution de la population sur 6 ans (2017 → 2023)',       src: 'Populations de référence INSEE 2023' },
+  { icon: '🏪', nom: 'Équipements',      poids: 18, detail: 'Commerces, services et équipements de proximité',          src: 'BPE 2024 INSEE' },
+  { icon: '🚆', nom: 'Transports',       poids: 16, detail: 'Distance gare SNCF + densité arrêts bus, métro, tram',     src: 'SNCF · transport.data.gouv.fr' },
+  { icon: '🏥', nom: 'Santé',            poids: 16, detail: 'Accessibilité médecins généralistes (zone d\'attraction)', src: 'APL 2023 DREES' },
+  { icon: '🔒', nom: 'Sécurité',         poids: 12, detail: 'Taux de criminalité (score inversé — moins = mieux)',      src: 'SSMSI 2024' },
+  { icon: '🏡', nom: 'Immobilier',       poids: 12, detail: 'Prix au m² médian (score inversé — moins cher = mieux)',   src: 'DVF 2024 DGFiP' },
+  { icon: '⚠️', nom: 'Risques naturels', poids:  8, detail: 'PPR approuvés — inondation (35 %), séisme (30 %), mouvement de terrain (20 %), feux de forêt (10 %), avalanche (5 %). Score inversé : moins de risques = mieux.', src: 'GASPAR Géorisques' },
+  { icon: '🎓', nom: 'Éducation',        poids:  7, detail: 'IPS collèges (40 %) + résultats brevet DNB (40 %) + lycées pro (20 %)', src: 'DEPP 2021-2025' },
+  { icon: '🌿', nom: 'Environnement',    poids:  7, detail: 'Part d\'espaces naturels et agricoles non artificialisés', src: 'CEREMA 2023' },
+  { icon: '📈', nom: 'Démographie',      poids:  4, detail: 'Évolution de la population sur 6 ans (2017 → 2023)',       src: 'Populations de référence INSEE 2023' },
 ]
 
 const LIMITES = [
   'Le cadre de vie, l\'ambiance du quartier, les projets d\'urbanisme ou vos préférences personnelles. Une commune C peut être le meilleur choix pour vous.',
   'Les revenus ne sont pas dans le score — affichés en information uniquement, pour ne pas avantager les communes aisées au détriment des autres.',
-  'Les petites communes rurales ont souvent moins de données disponibles. Le score repose alors sur 3 à 5 catégories au lieu de 8.',
+  'Les petites communes rurales ont souvent moins de données disponibles. Le score repose alors sur 3 à 5 catégories au lieu de 9.',
+  'Les risques naturels sont basés sur les PPR approuvés (GASPAR). Absence de PPR ne signifie pas absence de risque — certaines communes exposées n\'ont pas encore fait l\'objet d\'une procédure réglementaire.',
 ]
 
 export default function Methode() {
@@ -45,7 +47,7 @@ export default function Methode() {
             Chaque commune est comparée à l'ensemble des communes françaises par percentile.
             Un score de <strong className="text-ink">80</strong> signifie que la commune fait mieux que 80 % des communes.
             La médiane nationale est à <strong className="text-ink">50</strong> par construction.
-            Le score global est une moyenne pondérée des 8 catégories ci-dessous.
+            Le score global est une moyenne pondérée des 9 catégories ci-dessous.
           </p>
           <table className="w-full text-sm border-collapse">
             <tbody className="divide-y divide-border">
@@ -64,7 +66,7 @@ export default function Methode() {
 
         {/* Catégories */}
         <section className="bg-white border border-border rounded-2xl p-6 mb-4">
-          <h2 className="font-display text-xl text-ink mb-1">Les 8 catégories</h2>
+          <h2 className="font-display text-xl text-ink mb-1">Les 9 catégories</h2>
           <p className="text-xs text-ink-light mb-5">Poids dans le score global entre parenthèses.</p>
           <div className="space-y-4">
             {CATEGORIES.map(({ icon, nom, poids, detail, src }) => (
@@ -91,8 +93,8 @@ export default function Methode() {
             48 569 quartiers sont disponibles sur toute la France.
           </p>
           <p className="text-sm text-ink-light leading-relaxed mt-3">
-            Les quartiers sont scorés sur <strong className="text-ink">6 catégories</strong> : équipements, santé et immobilier sont mesurés localement au niveau du quartier.
-            Sécurité, transports et éducation reprennent le score de la commune parente (ces données ne sont pas disponibles à l'échelle du quartier).
+            Les quartiers sont scorés sur <strong className="text-ink">7 catégories</strong> : équipements, santé et immobilier sont mesurés localement au niveau du quartier.
+            Sécurité, transports, éducation et risques naturels reprennent le score de la commune parente (ces données ne sont pas disponibles à l'échelle du quartier).
           </p>
         </section>
 

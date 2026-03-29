@@ -15,6 +15,7 @@ const CATEGORIES = [
   { icon: '🚆', label: 'Transports',            desc: 'Gare SNCF + arrêts bus/métro/tram' },
   { icon: '🌿', label: 'Environnement',         desc: 'Part d\'espaces naturels et agricoles' },
   { icon: '📈', label: 'Démographie',           desc: 'Évolution de la population' },
+  { icon: '⚠️', label: 'Risques naturels',      desc: 'Inondation, séisme, mouvement de terrain (GASPAR)' },
 ]
 
 export default function Home() {

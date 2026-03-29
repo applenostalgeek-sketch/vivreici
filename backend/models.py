@@ -36,6 +36,7 @@ class IrisScore(Base):
     score_securite: Mapped[float] = mapped_column(Float, default=-1)
     score_transports: Mapped[float] = mapped_column(Float, default=-1)
     score_education: Mapped[float] = mapped_column(Float, default=-1)
+    score_risques: Mapped[float] = mapped_column(Float, default=-1)
 
     nb_equipements: Mapped[int] = mapped_column(Integer, default=0)
     nb_medecins_pour_10000: Mapped[float] = mapped_column(Float, default=0)
@@ -88,6 +89,7 @@ class Score(Base):
 
     score_revenus: Mapped[float] = mapped_column(Float, default=-1)   # stocké mais exclu du score global
     score_transports: Mapped[float] = mapped_column(Float, default=-1)
+    score_risques: Mapped[float] = mapped_column(Float, default=-1)
 
     # Données brutes résumées
     nb_equipements: Mapped[int] = mapped_column(Integer, default=0)

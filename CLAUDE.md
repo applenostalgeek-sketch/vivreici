@@ -32,6 +32,7 @@ Depuis `/Users/admin/vivreici/` :
 10. `python3 -m backend.data_import.import_demographie` → évolution population 2016→2021
 11. `python3 -m backend.data_import.import_environnement` → artificialisation sols (data.gouv.fr)
 12. `python3 -m backend.data_import.import_apl`         → santé APL DREES 2023 (remplace BPE medecins)
+13. `python3 -m backend.data_import.import_risques`     → risques naturels PPR (GASPAR Géorisques, ~5min)
 
 ### Import POI — présence équipements par commune ET par IRIS (sources officielles)
 Depuis `/Users/admin/vivreici/` (ordre recommandé, chaque script est indépendant) :
@@ -84,11 +85,12 @@ Depuis `/Users/admin/vivreici/` :
 - `score_transports` : Composite 50% distance gare SNCF + 50% densité arrêts TC (bus/métro/tram/RER via transport.data.gouv.fr). nb_arrets_tc stocké en DB.
 - `score_environnement` : Taux d'espaces non-artificialisés (data.gouv.fr CEREMA 2021). Percentile direct.
 - `score_demographie` : Évolution population 2016→2021 (Populations légales INSEE). Percentile direct.
+- `score_risques` : PPR naturels approuvés GASPAR — composite inondation(35%)+séisme(30%)+MVT(20%)+forêt(10%)+avalanche(5%). Percentile inversé.
 
 ### IRIS
 - 48,569 zones IRIS importées (IGN 2024)
 - 40,860 scorées avec >= 2 catégories (99% coverage des IRIS avec données locales)
-- **6 catégories IRIS** : équipements, santé, immobilier (locaux) + sécurité, transports, éducation (injectés depuis commune)
+- **7 catégories IRIS** : équipements, santé, immobilier (locaux) + sécurité, transports, éducation, risques (injectés depuis commune)
 - **Même méthodologie et poids que les communes** (CATEGORIES dict) → scores comparables
 - `import_commune_to_iris.py` : transfère les 3 sous-scores commune + fallback santé APL
 - `score_revenus` : stocké en DB mais EXCLU du score (cohérence avec communes)

@@ -18,6 +18,7 @@ CATEGORIES = {
     "education":    {"poids": 0.08, "sens": "direct"},   # IPS 40% + DNB 40% + lycée pro 20%
     "environnement":{"poids": 0.08, "sens": "inverse"},  # espaces non-artificialisés CEREMA 2023
     "demographie":  {"poids": 0.04, "sens": "direct"},   # évolution population 2017→2023
+    "risques":      {"poids": 0.09, "sens": "inverse"},  # PPR naturels GASPAR (inondation/séisme/MVT/forêt/avalanche)
     # NB : le code renormalise automatiquement quand une catégorie manque (score=-1).
     # Cohésion (revenus) retirée : taux pauvreté = proxy richesse, biais ségrégant (ex: Saclay 97/100).
 }

@@ -29,11 +29,23 @@ async def run():
     print("=== Enrichissement IRIS avec scores communes ===\n")
     await init_db()
 
+    # Migration : ajouter score_risques à iris_scores si absent
+    async with async_session() as session:
+        try:
+            await session.execute(text(
+                "ALTER TABLE iris_scores ADD COLUMN score_risques REAL DEFAULT -1"
+            ))
+            await session.commit()
+            print("Colonne score_risques ajoutée à iris_scores")
+        except Exception:
+            pass  # déjà présente
+
     async with async_session() as session:
         # ── 1. Charger les scores communes ──────────────────────────────────
         result = await session.execute(text("""
             SELECT code_insee,
-                   score_securite, score_transports, score_education, score_sante
+                   score_securite, score_transports, score_education, score_sante,
+                   score_risques
             FROM scores
         """))
         commune_scores = {}
@@ -43,6 +55,7 @@ async def run():
                 'transports': float(r[2]) if r[2] is not None and r[2] >= 0 else -1,
                 'education':  float(r[3]) if r[3] is not None and r[3] >= 0 else -1,
                 'sante':      float(r[4]) if r[4] is not None and r[4] >= 0 else -1,
+                'risques':    float(r[5]) if r[5] is not None and r[5] >= 0 else -1,
             }
         print(f"  {len(commune_scores)} communes chargées")
 
@@ -75,27 +88,29 @@ async def run():
 
             # Scores depuis la commune
             cs = commune_scores.get(code_commune, {})
-            s_secu  = cs.get('securite', -1)
-            s_trans = cs.get('transports', -1)
-            s_edu   = cs.get('education', -1)
+            s_secu    = cs.get('securite', -1)
+            s_trans   = cs.get('transports', -1)
+            s_edu     = cs.get('education', -1)
             s_sante_commune = cs.get('sante', -1)
+            s_risques = cs.get('risques', -1)
 
             # Fallback santé : si IRIS n'a pas de score santé mais la commune si
             if (sante <= 0) and s_sante_commune > 0:
                 sante = round(s_sante_commune, 1)
                 nb_sante_fallback += 1
 
-            if any(v >= 0 for v in [s_secu, s_trans, s_edu]):
+            if any(v >= 0 for v in [s_secu, s_trans, s_edu, s_risques]):
                 nb_with_commune_data += 1
 
             # Recalcul score global avec toutes les catégories disponibles
             sous_scores = {}
-            if seq >= 0:    sous_scores['equipements'] = seq
-            if sante >= 0:  sous_scores['sante'] = sante
-            if simmo >= 0:  sous_scores['immobilier'] = simmo
-            if s_secu >= 0:  sous_scores['securite'] = s_secu
-            if s_trans >= 0: sous_scores['transports'] = s_trans
-            if s_edu >= 0:   sous_scores['education'] = s_edu
+            if seq >= 0:      sous_scores['equipements'] = seq
+            if sante >= 0:    sous_scores['sante'] = sante
+            if simmo >= 0:    sous_scores['immobilier'] = simmo
+            if s_secu >= 0:   sous_scores['securite'] = s_secu
+            if s_trans >= 0:  sous_scores['transports'] = s_trans
+            if s_edu >= 0:    sous_scores['education'] = s_edu
+            if s_risques >= 0: sous_scores['risques'] = s_risques
 
             if not sous_scores:
                 continue
@@ -105,12 +120,13 @@ async def run():
             batches.append({
                 'ci': code_iris,
                 'sg': score, 'l': lettre, 'nb': nb_cat,
-                'seq':   seq,
-                'ss':    sante,
-                'simmo': simmo,
-                'ssecu': s_secu,
+                'seq':    seq,
+                'ss':     sante,
+                'simmo':  simmo,
+                'ssecu':  s_secu,
                 'strans': s_trans,
-                'sedu':  s_edu,
+                'sedu':   s_edu,
+                'srisq':  s_risques,
             })
 
         print(f"  → {nb_with_commune_data} IRIS enrichis avec données communes")
@@ -125,6 +141,7 @@ async def run():
                     score_securite   = :ssecu,
                     score_transports = :strans,
                     score_education  = :sedu,
+                    score_risques    = :srisq,
                     score_global     = :sg,
                     lettre           = :l,
                     nb_categories_scorees = :nb,

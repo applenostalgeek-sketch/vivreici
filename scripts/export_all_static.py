@@ -70,6 +70,7 @@ def main():
         SELECT code_insee, score_global, lettre, nb_categories_scorees,
                score_equipements, score_securite, score_immobilier, score_education,
                score_sante, score_transports, score_environnement, score_demographie,
+               score_risques,
                nb_equipements, apl_medecins, taux_criminalite,
                prix_m2_median, prix_m2_median_2022, nb_gares, distance_gare_km,
                nb_arrets_tc, equipements_detail, poi_detail,
@@ -94,6 +95,7 @@ def main():
                 'transports':   sub(s['score_transports']),
                 'environnement':sub(s['score_environnement']),
                 'demographie':  sub(s['score_demographie']),
+                'risques':      sub(s.get('score_risques')),
             },
             'donnees_brutes': {
                 'nb_equipements':        s['nb_equipements'],
@@ -121,7 +123,7 @@ def main():
                iz.population, iz.latitude, iz.longitude, iz.geometry,
                s.score_global, s.lettre, s.nb_categories_scorees,
                s.score_equipements, s.score_sante, s.score_immobilier, s.score_revenus,
-               s.score_securite, s.score_transports, s.score_education,
+               s.score_securite, s.score_transports, s.score_education, s.score_risques,
                s.nb_equipements, s.nb_medecins_pour_10000,
                s.prix_m2_median, s.revenu_median, s.taux_pauvrete,
                s.equipements_detail, s.poi_detail
@@ -171,16 +173,16 @@ def main():
         'nb_scorees': nb_scorees,
         'nb_iris': nb_iris_total,
         'categories': ['equipements', 'sante', 'securite', 'immobilier', 'education',
-                       'transports', 'environnement', 'demographie'],
+                       'transports', 'environnement', 'demographie', 'risques'],
     }
     dump(DATA / 'stats.json', stats)
     print(f"  stats.json OK")
 
     # ── 5. communes-map.json (slim — carte + recherche de base) ─────────────
     # Ordre des sous_scores pour communes-scores.json (compact array)
-    SS_ORDER = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'demographie']
+    SS_ORDER = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'demographie', 'risques']
     SS_COLS  = ['score_equipements', 'score_securite', 'score_immobilier', 'score_education',
-                'score_sante', 'score_transports', 'score_environnement', 'score_demographie']
+                'score_sante', 'score_transports', 'score_environnement', 'score_demographie', 'score_risques']
 
     print("Génération communes-map.json (slim)...")
     map_communes = []
@@ -331,6 +333,7 @@ def main():
                         'securite':    sub_i(r.get('score_securite')),
                         'transports':  sub_i(r.get('score_transports')),
                         'education':   sub_i(r.get('score_education')),
+                        'risques':     sub_i(r.get('score_risques')),
                     },
                 })
             obj['iris'] = iris_list
@@ -370,6 +373,7 @@ def main():
                 'securite':    sub_iv(r.get('score_securite')),
                 'transports':  sub_iv(r.get('score_transports')),
                 'education':   sub_iv(r.get('score_education')),
+                'risques':     sub_iv(r.get('score_risques')),
             },
             'donnees_brutes': {
                 'nb_equipements':        r.get('nb_equipements'),

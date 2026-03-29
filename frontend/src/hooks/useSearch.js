@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 const ADRESSE_API = 'https://api-adresse.data.gouv.fr/search/'
 
 // Ordre des catégories dans communes-scores.json (tableau compact)
-const SS_KEYS = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'demographie']
+const SS_KEYS = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'demographie', 'risques']
 
 // Cache singleton communes-map.json (slim)
 let communesPromise = null
@@ -15,7 +15,7 @@ export function loadCommunes() {
 }
 
 // Cache singleton communes-scores.json (lazy — sous_scores + prix_m2)
-// Format : [[code_insee, [eq,sec,imm,edu,san,tra,env,dem], prix_m2], ...]
+// Format : [[code_insee, [eq,sec,imm,edu,san,tra,env,dem,ris], prix_m2], ...]
 let scoresPromise = null
 let scoresMap = null  // Map<code_insee, {sous_scores, prix_m2_median}>
 
