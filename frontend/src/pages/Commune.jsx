@@ -68,6 +68,7 @@ export default function Commune() {
       )}
 
       {data && !loading && (
+        <>
         <main className="max-w-4xl mx-auto px-6 py-12">
           {/* Tabs CARTE / DETAIL */}
           <div className="flex items-center gap-1 mb-8 bg-paper border border-border rounded-xl p-1 w-fit">
@@ -534,6 +535,7 @@ export default function Commune() {
           {' · '}
           <a href="/carte" className="underline hover:text-ink">Carte</a>
         </footer>
+        </>
       )}
     </div>
   )

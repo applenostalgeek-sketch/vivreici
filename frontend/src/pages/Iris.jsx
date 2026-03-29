@@ -74,6 +74,7 @@ export default function Iris() {
       )}
 
       {data && !loading && (
+        <>
         <main className="max-w-4xl mx-auto px-6 py-12">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-ink-light mb-8">
@@ -403,6 +404,7 @@ export default function Iris() {
           {' · '}
           <a href="/carte" className="underline hover:text-ink">Carte</a>
         </footer>
+        </>
       )}
     </div>
   )
