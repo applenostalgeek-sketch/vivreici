@@ -333,7 +333,6 @@ export default function Iris() {
                             </div>
                           ))}
                         </div>
-                        <p className="text-xs text-ink-muted mt-3">BPE 2024 INSEE · Annuaire éducation · RES · OSM</p>
                       </div>
                     )
                   })()}
@@ -343,7 +342,6 @@ export default function Iris() {
                       <div className="bg-paper rounded-xl p-4">
                         <div className="font-mono text-xl font-bold text-ink">{data.score.donnees_brutes.medecins_pour_10000.toFixed(1)}</div>
                         <div className="text-xs text-ink-light mt-1">médecins / 10 000 hab.</div>
-                        <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">BPE 2024 INSEE</div>
                       </div>
                     )}
                     {data.score.donnees_brutes.prix_m2_median > 0 && (
@@ -352,7 +350,6 @@ export default function Iris() {
                           {Math.round(data.score.donnees_brutes.prix_m2_median).toLocaleString('fr-FR')} €
                         </div>
                         <div className="text-xs text-ink-light mt-1">prix médian au m²</div>
-                        <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">DVF 2024 DGFiP</div>
                       </div>
                     )}
                     {data.score.donnees_brutes.revenu_median > 0 && (
@@ -361,7 +358,6 @@ export default function Iris() {
                           {Math.round(data.score.donnees_brutes.revenu_median).toLocaleString('fr-FR')} €
                         </div>
                         <div className="text-xs text-ink-light mt-1">revenu médian / an</div>
-                        <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">Filosofi 2021 INSEE</div>
                       </div>
                     )}
                     {data.score.donnees_brutes.taux_pauvrete > 0 && (
@@ -370,7 +366,6 @@ export default function Iris() {
                           {data.score.donnees_brutes.taux_pauvrete.toFixed(1)} %
                         </div>
                         <div className="text-xs text-ink-light mt-1">taux de pauvreté</div>
-                        <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">Filosofi 2021 INSEE</div>
                       </div>
                     )}
                   </div>

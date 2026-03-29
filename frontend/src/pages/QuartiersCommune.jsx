@@ -198,8 +198,7 @@ export default function QuartiersCommune() {
         )}
 
         <div className="mt-8 pt-6 border-t border-border text-xs text-ink-light">
-          Données IRIS INSEE · BPE 2024, DVF 2024, Filosofi 2021 ·
-          <button onClick={() => navigate(`/commune/${codeInsee}`)} className="ml-1 underline hover:text-ink">
+          <button onClick={() => navigate(`/commune/${codeInsee}`)} className="underline hover:text-ink">
             Retour à la fiche commune
           </button>
           {' '}·{' '}

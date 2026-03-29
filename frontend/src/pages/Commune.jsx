@@ -206,14 +206,12 @@ export default function Commune() {
                     <div className="bg-paper rounded-xl p-4">
                       <div className="font-mono text-xl font-bold text-ink">{data.score.donnees_brutes.apl_medecins.toFixed(2)}</div>
                       <div className="text-xs text-ink-light mt-1">consultations/an/hab. (APL)</div>
-                      <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">APL 2023 DREES</div>
                     </div>
                   )}
                   {data.score.donnees_brutes.taux_criminalite > 0 && (
                     <div className="bg-paper rounded-xl p-4">
                       <div className="font-mono text-xl font-bold text-ink">{data.score.donnees_brutes.taux_criminalite.toFixed(1)}</div>
                       <div className="text-xs text-ink-light mt-1">délits / 1 000 hab.</div>
-                      <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">SSMSI 2024</div>
                     </div>
                   )}
                   {data.score.donnees_brutes.prix_m2_median > 0 && (() => {
@@ -238,7 +236,6 @@ export default function Commune() {
                         <div className="text-xs text-ink-light mt-1">
                           prix médian au m²{hasTrend ? ' (vs 2022)' : ''}
                         </div>
-                        <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">DVF 2024 DGFiP</div>
                       </div>
                     )
                   })()}
@@ -248,7 +245,6 @@ export default function Commune() {
                         {Math.round(data.score.donnees_brutes.revenu_median).toLocaleString('fr-FR')} €
                       </div>
                       <div className="text-xs text-ink-light mt-1">revenu médian / an (info)</div>
-                      <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">Filosofi 2021 INSEE</div>
                     </div>
                   )}
                   {data.score.donnees_brutes.taux_pauvrete > 0 && (
@@ -257,7 +253,6 @@ export default function Commune() {
                         {data.score.donnees_brutes.taux_pauvrete.toFixed(1)} %
                       </div>
                       <div className="text-xs text-ink-light mt-1">taux de pauvreté</div>
-                      <div className="text-xs font-mono text-ink-muted mt-0.5 opacity-60">Filosofi 2021 INSEE</div>
                     </div>
                   )}
                 </div>
@@ -320,7 +315,6 @@ export default function Commune() {
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-ink-muted mt-4">Sources : FINESS, Annuaire éducation, RES, OSM</p>
                   </div>
                 )
               })()}
@@ -525,7 +519,6 @@ export default function Commune() {
           {/* Méthode + disclaimer */}
           <div className="mt-10 pt-8 border-t border-border space-y-3 text-sm text-ink-light">
             <p>
-              Score calculé à partir de données open data françaises (BPE 2024 INSEE, DVF 2024 DGFiP, SSMSI 2024, APL 2023 DREES, IPS/DNB DEPP, Filosofi 2021 INSEE).
               Les scores sont des percentiles nationaux : 50 = médiane nationale, 80 = top 20%.{' '}
               <Link to="/methode" className="underline hover:text-ink">En savoir plus sur la méthode</Link>
             </p>
