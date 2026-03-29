@@ -74,7 +74,7 @@ def main():
                nb_equipements, apl_medecins, taux_criminalite,
                prix_m2_median, prix_m2_median_2022, nb_gares, distance_gare_km,
                nb_arrets_tc, equipements_detail, poi_detail,
-               nom_gare, transport_detail,
+               nom_gare, transport_detail, risques_detail,
                evolution_population_5ans, taux_pauvrete, updated_at
         FROM scores
     """).fetchall()
@@ -111,6 +111,7 @@ def main():
                 'poi_detail':            safe_json(s['poi_detail']),
                 'evolution_population_5ans': s['evolution_population_5ans'],
                 'taux_pauvrete':         s['taux_pauvrete'],
+                'risques_detail':        s['risques_detail'] if s.get('risques_detail') else None,
             },
             'nb_categories_scorees': s['nb_categories_scorees'],
             'updated_at': s['updated_at'],

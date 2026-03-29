@@ -130,7 +130,7 @@ def calculer_risque_composite(risk_types: set) -> float:
 
 
 async def migrer_colonnes():
-    """Ajoute score_risques si absent (migration sans alembic)."""
+    """Ajoute score_risques et risques_detail si absents (migration sans alembic)."""
     async with async_session() as session:
         for table in ['scores', 'iris_scores']:
             try:
@@ -141,6 +141,14 @@ async def migrer_colonnes():
                 print(f"Colonne score_risques ajoutée à {table}")
             except Exception:
                 pass  # déjà présente
+        try:
+            await session.execute(text(
+                "ALTER TABLE scores ADD COLUMN risques_detail TEXT"
+            ))
+            await session.commit()
+            print("Colonne risques_detail ajoutée à scores")
+        except Exception:
+            pass  # déjà présente
 
 
 async def run():
@@ -177,9 +185,12 @@ async def run():
     df = pd.DataFrame(rows, columns=cols)
     print(f"  {len(df):,} communes en base")
 
-    # 3. Calcul indice composite
+    # 3. Calcul indice composite + détail des catégories présentes
     df['risque_composite'] = df['code_insee'].apply(
         lambda code: calculer_risque_composite(risks_by_commune.get(code, set()))
+    )
+    df['risques_detail'] = df['code_insee'].apply(
+        lambda code: ','.join(sorted(risks_by_commune[code])) if code in risks_by_commune else None
     )
     n_zero = (df['risque_composite'] == 0).sum()
     print(f"\nDistribution :")
@@ -222,6 +233,7 @@ async def run():
             await session.execute(text("""
                 UPDATE scores
                 SET score_risques         = :sr,
+                    risques_detail        = :rd,
                     score_global          = :sg,
                     lettre                = :l,
                     nb_categories_scorees = :nb,
@@ -229,6 +241,7 @@ async def run():
                 WHERE code_insee = :code
             """), {
                 'sr':   round(new_risk, 1),
+                'rd':   row.get('risques_detail') if not pd.isna(row.get('risques_detail') or float('nan')) else None,
                 'sg':   score_global,
                 'l':    lettre,
                 'nb':   nb_cat,

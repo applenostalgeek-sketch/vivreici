@@ -422,6 +422,44 @@ export default function Commune() {
                 )
               })()}
 
+              {/* Section Risques naturels */}
+              {(() => {
+                const rd = data.score.donnees_brutes.risques_detail
+                const RISK_META = {
+                  inondation:  { label: 'Inondation',            icon: '🌊' },
+                  seisme:      { label: 'Séisme',                icon: '🏔️' },
+                  mvt_terrain: { label: 'Mouvement de terrain',  icon: '⛰️' },
+                  foret:       { label: 'Feu de forêt',          icon: '🔥' },
+                  avalanche:   { label: 'Avalanche',             icon: '❄️' },
+                }
+                const RISK_ORDER = ['inondation', 'seisme', 'mvt_terrain', 'foret', 'avalanche']
+
+                const risks = rd ? rd.split(',').filter(Boolean) : []
+                const sorted = RISK_ORDER.filter(r => risks.includes(r))
+
+                return (
+                  <div className="bg-white rounded-2xl border border-border p-6">
+                    <h2 className="font-display text-xl text-ink mb-4">Risques naturels</h2>
+                    {sorted.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {sorted.map(r => {
+                          const m = RISK_META[r]
+                          return (
+                            <span key={r} className="inline-flex items-center gap-1.5 text-sm bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full">
+                              <span>{m.icon}</span>
+                              <span>{m.label}</span>
+                            </span>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-ink-light">Aucun Plan de Prévention des Risques (PPR) naturels approuvé.</p>
+                    )}
+                    <p className="text-xs text-ink-muted mt-4">Source : Géorisques GASPAR</p>
+                  </div>
+                )
+              })()}
+
             </div>
           )}
 

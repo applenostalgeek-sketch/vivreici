@@ -90,6 +90,7 @@ class Score(Base):
     score_revenus: Mapped[float] = mapped_column(Float, default=-1)   # stocké mais exclu du score global
     score_transports: Mapped[float] = mapped_column(Float, default=-1)
     score_risques: Mapped[float] = mapped_column(Float, default=-1)
+    risques_detail: Mapped[str] = mapped_column(Text, nullable=True)  # ex: "inondation,seisme"
 
     # Données brutes résumées
     nb_equipements: Mapped[int] = mapped_column(Integer, default=0)
