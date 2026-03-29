@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import SearchBar from '../components/SearchBar.jsx'
 import MapView from '../components/MapView.jsx'
+import ProfileDropdown from '../components/ProfileDropdown.jsx'
 
 export default function Carte() {
   return (
@@ -12,6 +13,7 @@ export default function Carte() {
         <div className="flex-1 max-w-sm">
           <SearchBar size="sm" placeholder="Commune ou adresse…" />
         </div>
+        <ProfileDropdown />
         <Link to="/classement" className="hidden lg:flex-shrink-0 text-sm text-ink-light hover:text-ink transition-colors">
           Classement →
         </Link>
