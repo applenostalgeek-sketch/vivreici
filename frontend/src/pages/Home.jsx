@@ -137,33 +137,23 @@ export default function Home() {
       )}
 
       {/* ── CATÉGORIES ──────────────────────────────────────────────── */}
-      <section className="px-6 py-16">
+      <section className="px-6 py-8">
         <div className="max-w-3xl mx-auto">
-          <h2 className="font-display text-3xl text-ink mb-2 text-center">Ce qu'on mesure</h2>
-          <p className="text-ink-light text-sm text-center mb-10">
-            Chaque commune comparée aux 35 000 autres — percentile national.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {CATEGORIES.map(({ icon, label, desc }) => (
-              <div key={label} className="flex items-start gap-3 bg-white border border-border rounded-xl px-4 py-4">
-                <span className="text-lg flex-shrink-0 mt-0.5">{icon}</span>
-                <div>
-                  <div className="font-semibold text-sm text-ink">{label}</div>
-                  <div className="text-xs text-ink-light mt-0.5 leading-relaxed">{desc}</div>
-                </div>
-              </div>
+          <p className="text-ink-light text-xs text-center mb-4 uppercase tracking-widest">Ce qu'on mesure</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {CATEGORIES.map(({ icon, label }) => (
+              <span key={label} className="flex items-center gap-1.5 bg-white border border-border rounded-full px-3 py-1.5 text-sm text-ink">
+                <span>{icon}</span>
+                <span>{label}</span>
+              </span>
             ))}
           </div>
-          <p className="text-center text-xs text-ink-light mt-8">
-            Sources : BPE 2024 INSEE · DVF 2024 DGFiP · SSMSI 2024 · APL 2023 DREES · CEREMA 2023 · Filosofi 2021 INSEE ·{' '}
-            <Link to="/methode" className="underline hover:text-ink">Méthode complète</Link>
-          </p>
         </div>
       </section>
 
       {/* ── FOOTER ──────────────────────────────────────────────────── */}
       <footer className="border-t border-border px-6 py-5 text-center text-xs text-ink-light">
-        lebonquartier · open data français · 2024 ·{' '}
+        lebonquartier · open data français · 2026 ·{' '}
         <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
         {' · '}
         <a href="/carte" className="underline hover:text-ink">Carte</a>
