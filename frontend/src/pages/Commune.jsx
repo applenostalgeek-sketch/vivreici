@@ -72,16 +72,6 @@ export default function Commune() {
           {/* Tabs CARTE / DETAIL */}
           <div className="flex items-center gap-1 mb-8 bg-paper border border-border rounded-xl p-1 w-fit">
             <button
-              onClick={() => setTab('carte')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                tab === 'carte'
-                  ? 'bg-white text-ink shadow-sm border border-border'
-                  : 'text-ink-light hover:text-ink'
-              }`}
-            >
-              Carte
-            </button>
-            <button
               onClick={() => setTab('detail')}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
                 tab === 'detail'
@@ -91,16 +81,21 @@ export default function Commune() {
             >
               Détail
             </button>
+            <button
+              onClick={() => setTab('carte')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                tab === 'carte'
+                  ? 'bg-white text-ink shadow-sm border border-border'
+                  : 'text-ink-light hover:text-ink'
+              }`}
+            >
+              Carte
+            </button>
           </div>
 
           {/* ── TAB CARTE ──────────────────────────────────────────────── */}
           {tab === 'carte' && data.latitude && data.longitude && (
             <div>
-              <div className="flex justify-end mb-2 print:hidden">
-                <button onClick={() => window.print()} className="px-3 py-1.5 text-sm border border-border rounded-lg text-ink-light hover:text-ink hover:border-ink transition-all">
-                  Imprimer
-                </button>
-              </div>
               <div className="rounded-2xl overflow-hidden border border-border" style={{ height: '70vh' }}>
                 <MapView
                   initialCenter={markerLat && markerLng ? [markerLat, markerLng] : [data.latitude, data.longitude]}
@@ -132,15 +127,7 @@ export default function Commune() {
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12">
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-4 mb-2">
-                <h1 className="font-display text-4xl md:text-5xl text-ink">{data.nom}</h1>
-                <button
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 text-sm border border-border rounded-lg text-ink-light hover:text-ink hover:border-ink transition-all print:hidden flex-shrink-0"
-                >
-                  Imprimer
-                </button>
-              </div>
+              <h1 className="font-display text-4xl md:text-5xl text-ink mb-2">{data.nom}</h1>
               <div className="flex flex-wrap items-center gap-3 text-ink-light">
 {data.departement && <span>{data.departement}</span>}
                 {data.region && <><span>·</span><span>{data.region}</span></>}
