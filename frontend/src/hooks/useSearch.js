@@ -152,16 +152,66 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-export async function locateByCoords(lat, lng) {
+// Point-in-polygon via ray casting (GeoJSON ring = [[lng, lat], ...])
+function pointInRing(lat, lng, ring) {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]  // lng, lat
+    const [xj, yj] = ring[j]
+    if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi))
+      inside = !inside
+  }
+  return inside
+}
+
+function pointInGeometry(lat, lng, geometry) {
+  if (geometry.type === 'Polygon') {
+    if (!pointInRing(lat, lng, geometry.coordinates[0])) return false
+    for (let i = 1; i < geometry.coordinates.length; i++)
+      if (pointInRing(lat, lng, geometry.coordinates[i])) return false
+    return true
+  }
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates.some(poly => {
+      if (!pointInRing(lat, lng, poly[0])) return false
+      for (let i = 1; i < poly.length; i++)
+        if (pointInRing(lat, lng, poly[i])) return false
+      return true
+    })
+  }
+  return false
+}
+
+export async function locateByCoords(lat, lng, codeCommune = null) {
+  // Lookup précis : point-in-polygon sur les vrais polygones IRIS de la commune
+  if (codeCommune) {
+    try {
+      const resp = await fetch(`/data/iris-map/${codeCommune}.json`)
+      if (resp.ok) {
+        const geojson = await resp.json()
+        for (const feature of (geojson.features || [])) {
+          const geo = feature.geometry
+          if (!geo || (geo.type !== 'Polygon' && geo.type !== 'MultiPolygon')) continue
+          if (pointInGeometry(lat, lng, geo)) {
+            return {
+              code_iris: feature.properties.code_iris,
+              code_commune: codeCommune,
+            }
+          }
+        }
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Fallback : centroïde le plus proche (toute la France)
   const locator = await loadIrisLocator()
-  // locator = [[code_iris, code_commune, lat, lng], ...]
   let best = null
   let bestDist = Infinity
-  for (const [codeIris, codeCommune, iLat, iLng] of locator) {
+  for (const [codeIris, codeComm, iLat, iLng] of locator) {
     const d = haversineKm(lat, lng, iLat, iLng)
     if (d < bestDist) {
       bestDist = d
-      best = { code_iris: codeIris, code_commune: codeCommune }
+      best = { code_iris: codeIris, code_commune: codeComm }
     }
   }
   if (!best) throw new Error('Aucun IRIS trouvé')

@@ -31,7 +31,7 @@ export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une c
     setLocating(true)
     inputRef.current?.blur()
     try {
-      const loc = await locateByCoords(adresse.lat, adresse.lng)
+      const loc = await locateByCoords(adresse.lat, adresse.lng, adresse.code_insee)
       if (loc.code_iris) {
         navigate(`/iris/${loc.code_iris}?lat=${adresse.lat}&lng=${adresse.lng}`)
       } else {
