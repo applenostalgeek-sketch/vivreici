@@ -265,6 +265,15 @@ export default function Commune() {
                       <div className="text-xs text-ink-light mt-1">revenu médian / an (info)</div>
                     </div>
                   )}
+                  {data.score.donnees_brutes.prix_m2_median > 0 && data.score.donnees_brutes.revenu_median > 0 && (() => {
+                    const effort = (data.score.donnees_brutes.prix_m2_median * 80 / data.score.donnees_brutes.revenu_median).toFixed(1)
+                    return (
+                      <div className="bg-paper rounded-xl p-4">
+                        <div className="font-mono text-xl font-bold text-ink">{effort} ans</div>
+                        <div className="text-xs text-ink-light mt-1">pour acheter 80 m² (revenu médian local)</div>
+                      </div>
+                    )
+                  })()}
                   {data.score.donnees_brutes.taux_pauvrete > 0 && (
                     <div className="bg-paper rounded-xl p-4">
                       <div className="font-mono text-xl font-bold text-ink">
