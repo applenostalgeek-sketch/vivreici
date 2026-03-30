@@ -9,6 +9,7 @@ import { CATEGORY_META } from '../constants.js'
 import { usePageMeta } from '../hooks/usePageMeta.js'
 import { useProfile } from '../context/ProfileContext.jsx'
 import { PROFILES, recalcScore } from '../utils/profiles.js'
+import { scoreToColor, scoreToTextClass } from '../utils/scoreUtils.js'
 
 export default function Commune() {
   const { codeInsee } = useParams()
@@ -179,275 +180,224 @@ export default function Commune() {
             )}
           </div>
 
-          {data.score && (
-            <div className="space-y-6">
+          {data.score && (() => {
+            const brutes = data.score.donnees_brutes || {}
 
+            // ── Stat inline par catégorie ────────────────────────────────────
+            function catStat(key, val) {
+              if (key === 'securite' && brutes.taux_criminalite != null)
+                return `${brutes.taux_criminalite.toFixed(1)} délits / 1 000 hab`
+              if (key === 'sante' && brutes.apl_medecins > 0)
+                return `${brutes.apl_medecins.toFixed(1)} consult./an/hab`
+              if (key === 'immobilier' && brutes.prix_m2_median > 0) {
+                const prix = Math.round(brutes.prix_m2_median).toLocaleString('fr-FR')
+                const p22 = brutes.prix_m2_median_2022
+                if (p22 > 0) {
+                  const pct = Math.round((brutes.prix_m2_median - p22) / p22 * 100)
+                  const arrow = pct > 2 ? '↑' : pct < -2 ? '↓' : '→'
+                  const cls = pct > 2 ? 'text-score-D' : pct < -2 ? 'text-score-B' : 'text-ink-muted'
+                  return <span>{prix} €/m² <span className={`font-mono ${cls}`}>{arrow} {pct > 0 ? '+' : ''}{pct}%</span></span>
+                }
+                return `${prix} €/m²`
+              }
+              if (key === 'transports' && brutes.nom_gare && !['2A','2B'].includes(data.departement))
+                return brutes.distance_gare_km >= 2 ? `${brutes.nom_gare} — ${brutes.distance_gare_km} km` : brutes.nom_gare
+              if (key === 'demographie' && brutes.evolution_population_5ans != null && brutes.evolution_population_5ans !== 0) {
+                const evo = brutes.evolution_population_5ans
+                return `${evo > 0 ? '+' : ''}${evo.toFixed(1)} % sur 5 ans`
+              }
+              if (key === 'risques')
+                return brutes.risques_detail ? null : 'Aucun PPR'
+              return null
+            }
 
-              {/* Score bars */}
-              <div className="bg-white rounded-2xl border border-border p-6">
-                <h2 className="font-display text-xl text-ink mb-6">Scores par catégorie</h2>
-                <div className="space-y-5">
-                  {Object.entries(CATEGORY_META).map(([key, meta]) => {
-                    const val = data.score.sous_scores[key]
-                    if (val == null) return null
-                    const brutes = data.score.donnees_brutes || {}
+            // Tri par score décroissant
+            const sortedCats = Object.entries(CATEGORY_META)
+              .map(([key, meta]) => ({ key, meta, val: data.score.sous_scores[key] }))
+              .filter(({ val }) => val != null)
+              .sort((a, b) => b.val - a.val)
 
-                    let desc = meta.desc
-                    if (key === 'securite' && brutes.taux_criminalite != null) {
-                      const taux = brutes.taux_criminalite.toFixed(1)
-                      desc = val < 35
-                        ? `${taux} infractions/1 000 hab · les zones denses ont mécaniquement plus d'infractions déclarées`
-                        : `${taux} infractions/1 000 hab`
-                    } else if (key === 'immobilier' && brutes.prix_m2_median > 0) {
-                      const prix = Math.round(brutes.prix_m2_median).toLocaleString('fr-FR')
-                      desc = `${prix} €/m² médian · score élevé = prix abordable vs médiane nationale`
-                    } else if (key === 'sante' && brutes.apl_medecins > 0) {
-                      desc = `${brutes.apl_medecins.toFixed(1)} consultations/an/hab accessibles (DREES 2023)`
-                    }
+            // ── Transport tags ────────────────────────────────────────────────
+            const TYPE_META = {
+              1: { label: 'Métro', icon: '🚇' }, 0: { label: 'Tramway', icon: '🚃' },
+              11: { label: 'Tramway', icon: '🚃' }, 4: { label: 'Ferry', icon: '⛴️' },
+              3: { label: 'Bus', icon: '🚌' }, 7: { label: 'Bus', icon: '🚌' },
+              700: { label: 'Bus', icon: '🚌' }, 702: { label: 'Bus', icon: '🚌' },
+            }
+            const lignes = brutes.transport_detail?.lignes || []
+            const transportTags = []
+            const seenTC = new Set()
+            const gareLabel = brutes.nom_gare && !['2A','2B'].includes(data.departement)
+              ? (brutes.distance_gare_km >= 2 ? `${brutes.nom_gare} — ${brutes.distance_gare_km} km` : brutes.nom_gare)
+              : null
+            for (const l of lignes) {
+              if (l.type_code === 2) continue
+              const m = TYPE_META[l.type_code]
+              if (m && !seenTC.has(m.label)) { seenTC.add(m.label); transportTags.push(m) }
+            }
 
-                    return <ScoreBar key={key} value={val} label={meta.label} icon={meta.icon} desc={desc} />
-                  })}
-                </div>
-                {data.score.nb_categories_scorees < 6 && (
-                  <p className="mt-6 text-xs text-ink-light border-t border-border pt-4">
-                    Score calculé sur <strong className="text-ink">{data.score.nb_categories_scorees}</strong> catégorie(s).
-                    Les données manquantes seront ajoutées prochainement.
-                  </p>
-                )}
-              </div>
+            // ── POI groupes ───────────────────────────────────────────────────
+            const poi = brutes.poi_detail || {}
+            const POI_GROUPES = [
+              { label: 'Commerces', keys: [
+                { key: 'boulangerie', label: 'Boulangerie' }, { key: 'boucherie', label: 'Boucherie' },
+                { key: 'supermarché', label: 'Supermarché' },
+              ]},
+              { label: 'Santé', keys: [
+                { key: 'pharmacie', label: 'Pharmacie' }, { key: 'cabinet_médical', label: 'Cabinet médical' },
+                { key: 'hôpital', label: 'Hôpital' }, { key: 'clinique', label: 'Clinique' },
+                { key: 'labo_analyse', label: 'Laboratoire' },
+              ]},
+              { label: 'Éducation', keys: [
+                { key: 'école_maternelle', label: 'Maternelle' }, { key: 'école_primaire', label: 'Primaire' },
+                { key: 'collège', label: 'Collège' }, { key: 'lycée', label: 'Lycée' },
+                { key: 'lycée_professionnel', label: 'Lycée pro' },
+              ]},
+              { label: 'Sports', keys: [
+                { key: 'piscine', label: 'Piscine' }, { key: 'gymnase', label: 'Gymnase' }, { key: 'stade', label: 'Stade' },
+              ]},
+              { label: 'Culture', keys: [
+                { key: 'cinéma', label: 'Cinéma' }, { key: 'bibliothèque', label: 'Bibliothèque' },
+                { key: 'théâtre', label: 'Théâtre' }, { key: 'musée', label: 'Musée' },
+              ]},
+            ]
+            const poiActifs = POI_GROUPES
+              .map(g => ({ ...g, present: g.keys.filter(({ key }) => (poi[key] || 0) > 0).map(({ label }) => label) }))
+              .filter(g => g.present.length > 0)
 
-              {/* Données brutes */}
-              <div className="bg-white rounded-2xl border border-border p-6">
-                <h2 className="font-display text-xl text-ink mb-4">Données brutes</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {data.score.donnees_brutes.apl_medecins > 0 && (
-                    <div className="bg-paper rounded-xl p-4">
-                      <div className="font-mono text-xl font-bold text-ink">{data.score.donnees_brutes.apl_medecins.toFixed(2)}</div>
-                      <div className="text-xs text-ink-light mt-1">consultations/an/hab. (APL)</div>
-                    </div>
-                  )}
-                  {data.score.donnees_brutes.taux_criminalite > 0 && (
-                    <div className="bg-paper rounded-xl p-4">
-                      <div className="font-mono text-xl font-bold text-ink">{data.score.donnees_brutes.taux_criminalite.toFixed(1)}</div>
-                      <div className="text-xs text-ink-light mt-1">délits / 1 000 hab.</div>
-                    </div>
-                  )}
-                  {data.score.donnees_brutes.prix_m2_median > 0 && (() => {
-                    const p2024 = data.score.donnees_brutes.prix_m2_median
-                    const p2022 = data.score.donnees_brutes.prix_m2_median_2022
-                    const hasTrend = p2022 && p2022 > 0
-                    const pctChange = hasTrend ? ((p2024 - p2022) / p2022 * 100) : null
-                    const trendUp = pctChange > 2
-                    const trendDown = pctChange < -2
-                    return (
-                      <div className="bg-paper rounded-xl p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="font-mono text-xl font-bold text-ink">
-                            {Math.round(p2024).toLocaleString('fr-FR')} €
+            // ── Risques tags ──────────────────────────────────────────────────
+            const RISK_META = {
+              inondation:  { label: 'Inondation', icon: '🌊' }, seisme: { label: 'Séisme', icon: '🏔️' },
+              mvt_terrain: { label: 'Mouvement de terrain', icon: '⛰️' }, foret: { label: 'Feu de forêt', icon: '🔥' },
+              avalanche:   { label: 'Avalanche', icon: '❄️' },
+            }
+            const riskTags = (brutes.risques_detail || '').split(',').filter(Boolean)
+              .filter(r => RISK_META[r]).map(r => RISK_META[r])
+
+            const hasSurPlace = gareLabel || transportTags.length || poiActifs.length
+
+            return (
+              <div className="space-y-4">
+
+                {/* ── Catégories ── */}
+                <div className="bg-white rounded-2xl border border-border p-6">
+                  <div className="divide-y divide-border">
+                    {sortedCats.map(({ key, meta, val }) => {
+                      const pct = Math.round(val)
+                      const color = scoreToColor(pct)
+                      const textCls = scoreToTextClass(pct)
+                      const stat = catStat(key, val)
+                      return (
+                        <div key={key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                          <span className="text-base w-5 flex-shrink-0 text-center">{meta.icon}</span>
+                          <span className="text-sm font-medium text-ink w-24 sm:w-32 flex-shrink-0">{meta.label}</span>
+                          <span className={`font-display font-bold text-base w-5 flex-shrink-0 ${textCls}`}>
+                            {pct >= 80 ? 'A' : pct >= 60 ? 'B' : pct >= 40 ? 'C' : pct >= 20 ? 'D' : 'E'}
+                          </span>
+                          <div className="flex-1 h-1 bg-paper rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
                           </div>
-                          {pctChange != null && (
-                            <span className={`text-xs font-mono font-semibold ${trendUp ? 'text-score-D' : trendDown ? 'text-score-B' : 'text-ink-light'}`}>
-                              {trendUp ? '↑' : trendDown ? '↓' : '→'} {pctChange > 0 ? '+' : ''}{Math.round(pctChange)}%
-                            </span>
-                          )}
+                          <span className="hidden sm:block text-xs text-ink-muted text-right w-44 flex-shrink-0 truncate">{stat}</span>
                         </div>
-                        <div className="text-xs text-ink-light mt-1">
-                          prix médian au m²{hasTrend ? ' (vs 2022)' : ''}
-                        </div>
-                      </div>
-                    )
-                  })()}
-                  {data.score.donnees_brutes.revenu_median > 0 && (
-                    <div className="bg-paper rounded-xl p-4">
-                      <div className="font-mono text-xl font-bold text-ink">
-                        {Math.round(data.score.donnees_brutes.revenu_median).toLocaleString('fr-FR')} €
-                      </div>
-                      <div className="text-xs text-ink-light mt-1">revenu médian / an (info)</div>
-                    </div>
-                  )}
-                  {data.score.donnees_brutes.prix_m2_median > 0 && data.score.donnees_brutes.revenu_median > 0 && (() => {
-                    const effort = (data.score.donnees_brutes.prix_m2_median * 80 / data.score.donnees_brutes.revenu_median).toFixed(1)
-                    return (
-                      <div className="bg-paper rounded-xl p-4">
-                        <div className="font-mono text-xl font-bold text-ink">{effort} ans</div>
-                        <div className="text-xs text-ink-light mt-1">pour acheter 80 m² (revenu médian local)</div>
-                      </div>
-                    )
-                  })()}
-                  {data.score.donnees_brutes.taux_pauvrete > 0 && (
-                    <div className="bg-paper rounded-xl p-4">
-                      <div className="font-mono text-xl font-bold text-ink">
-                        {data.score.donnees_brutes.taux_pauvrete.toFixed(1)} %
-                      </div>
-                      <div className="text-xs text-ink-light mt-1">taux de pauvreté</div>
-                    </div>
+                      )
+                    })}
+                  </div>
+                  {data.score.nb_categories_scorees < 6 && (
+                    <p className="mt-4 text-xs text-ink-light border-t border-border pt-4">
+                      Score calculé sur <strong className="text-ink">{data.score.nb_categories_scorees}</strong> catégorie(s) — données manquantes à venir.
+                    </p>
                   )}
                 </div>
 
-              </div>
+                {/* ── Contexte (données non scorées) ── */}
+                {(brutes.revenu_median > 0 || brutes.taux_pauvrete > 0) && (
+                  <div className="grid grid-cols-3 divide-x divide-border bg-white rounded-2xl border border-border overflow-hidden">
+                    {brutes.revenu_median > 0 && (
+                      <div className="px-5 py-4">
+                        <div className="font-mono text-lg font-semibold text-ink">
+                          {Math.round(brutes.revenu_median).toLocaleString('fr-FR')} €
+                        </div>
+                        <div className="text-xs text-ink-muted mt-0.5">revenu médian / an</div>
+                      </div>
+                    )}
+                    {brutes.prix_m2_median > 0 && brutes.revenu_median > 0 && (
+                      <div className="px-5 py-4">
+                        <div className="font-mono text-lg font-semibold text-ink">
+                          {(brutes.prix_m2_median * 80 / brutes.revenu_median).toFixed(1)} ans
+                        </div>
+                        <div className="text-xs text-ink-muted mt-0.5">pour acheter 80 m²</div>
+                      </div>
+                    )}
+                    {brutes.taux_pauvrete > 0 && (
+                      <div className="px-5 py-4">
+                        <div className="font-mono text-lg font-semibold text-ink">
+                          {brutes.taux_pauvrete.toFixed(1)} %
+                        </div>
+                        <div className="text-xs text-ink-muted mt-0.5">taux de pauvreté</div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {/* Équipements présents — sources officielles (FINESS, Annuaire Édu, RES, OSM) */}
-              {data.score.donnees_brutes.poi_detail && (() => {
-                const poi = data.score.donnees_brutes.poi_detail
-                const GROUPES = [
-                  { label: 'Commerces', icon: '🛒', keys: [
-                    { key: 'boulangerie', label: 'Boulangerie' },
-                    { key: 'boucherie', label: 'Boucherie' },
-                    { key: 'supermarché', label: 'Supermarché' },
-                  ]},
-                  { label: 'Santé', icon: '🏥', keys: [
-                    { key: 'pharmacie', label: 'Pharmacie' },
-                    { key: 'cabinet_médical', label: 'Cabinet médical' },
-                    { key: 'hôpital', label: 'Hôpital' },
-                    { key: 'clinique', label: 'Clinique' },
-                    { key: 'labo_analyse', label: 'Laboratoire' },
-                  ]},
-                  { label: 'Éducation', icon: '🎓', keys: [
-                    { key: 'école_maternelle', label: 'Maternelle' },
-                    { key: 'école_primaire', label: 'Primaire' },
-                    { key: 'collège', label: 'Collège' },
-                    { key: 'lycée', label: 'Lycée' },
-                    { key: 'lycée_professionnel', label: 'Lycée pro' },
-                  ]},
-                  { label: 'Sports', icon: '⚽', keys: [
-                    { key: 'piscine', label: 'Piscine' },
-                    { key: 'gymnase', label: 'Gymnase' },
-                    { key: 'stade', label: 'Stade' },
-                  ]},
-                  { label: 'Culture', icon: '🎭', keys: [
-                    { key: 'cinéma', label: 'Cinéma' },
-                    { key: 'bibliothèque', label: 'Bibliothèque' },
-                    { key: 'théâtre', label: 'Théâtre' },
-                    { key: 'musée', label: 'Musée' },
-                  ]},
-                ]
-                const groupesActifs = GROUPES
-                  .map(g => ({ ...g, present: g.keys.filter(({ key }) => (poi[key] || 0) > 0).map(({ label }) => label) }))
-                  .filter(g => g.present.length > 0)
-                if (!groupesActifs.length) return null
-                return (
+                {/* ── Sur place ── */}
+                {hasSurPlace && (
                   <div className="bg-white rounded-2xl border border-border p-6">
-                    <h2 className="font-display text-xl text-ink mb-4">Équipements</h2>
-                    <div className="space-y-2">
-                      {groupesActifs.map(g => (
-                        <div key={g.label} className="flex items-start gap-2">
-                          <span className="text-sm flex-shrink-0 mt-0.5">{g.icon}</span>
-                          <div className="flex flex-wrap gap-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-4">Sur place</p>
+                    <div className="space-y-3">
+
+                      {(gareLabel || transportTags.length > 0) && (
+                        <div className="flex items-start gap-3">
+                          <span className="text-xs text-ink-muted w-20 flex-shrink-0 pt-0.5">Transports</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {gareLabel && (
+                              <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-full">
+                                🚉 {gareLabel}
+                              </span>
+                            )}
+                            {transportTags.map(m => (
+                              <span key={m.label} className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-full">
+                                {m.icon} {m.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {poiActifs.map(g => (
+                        <div key={g.label} className="flex items-start gap-3">
+                          <span className="text-xs text-ink-muted w-20 flex-shrink-0 pt-0.5">{g.label}</span>
+                          <div className="flex flex-wrap gap-1.5">
                             {g.present.map(label => (
-                              <span key={label} className="text-xs bg-surface-alt text-ink-light px-2 py-0.5 rounded-full border border-border">
+                              <span key={label} className="text-xs bg-paper text-ink-light border border-border px-2.5 py-1 rounded-full">
                                 {label}
                               </span>
                             ))}
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                )
-              })()}
 
-              {/* Section Transports en commun */}
-              {(() => {
-                const db = data.score.donnees_brutes
-                const td = db.transport_detail
-                const nomGare = db.nom_gare
-                const distGare = db.distance_gare_km
-                const lignes = td?.lignes || []
-
-                if (!nomGare && !lignes.length) return null
-
-                // Types de TC présents (hors rail type 2, déjà couvert par la gare)
-                const TYPE_META = {
-                  1:   { label: 'Métro',      icon: '🚇' },
-                  0:   { label: 'Tramway',    icon: '🚃' },
-                  11:  { label: 'Tramway',    icon: '🚃' },
-                  12:  { label: 'Monorail',   icon: '🚝' },
-                  4:   { label: 'Ferry',      icon: '⛴️' },
-                  3:   { label: 'Bus',        icon: '🚌' },
-                  7:   { label: 'Bus',        icon: '🚌' },
-                  700: { label: 'Bus',        icon: '🚌' },
-                  702: { label: 'Bus',        icon: '🚌' },
-                }
-                const presentTypes = []
-                const seen = new Set()
-                for (const l of lignes) {
-                  if (l.type_code === 2) continue  // rail = couvert par la gare
-                  const meta = TYPE_META[l.type_code]
-                  if (meta && !seen.has(meta.label)) {
-                    seen.add(meta.label)
-                    presentTypes.push(meta)
-                  }
-                }
-
-                const gareLabel = nomGare && !['2A', '2B'].includes(data.departement)
-                  ? (distGare >= 2 ? `${nomGare} — ${distGare} km` : nomGare)
-                  : null
-
-                return (
-                  <div className="bg-white rounded-2xl border border-border p-6">
-                    <h2 className="font-display text-xl text-ink mb-4">Transports en commun</h2>
-                    <div className="flex flex-wrap gap-2">
-                      {gareLabel && (
-                        <span className="inline-flex items-center gap-1.5 text-sm bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-full">
-                          <span>🚉</span>
-                          <span>{gareLabel}</span>
-                        </span>
-                      )}
-                      {presentTypes.map(m => (
-                        <span key={m.label} className="inline-flex items-center gap-1.5 text-sm bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-full">
-                          <span>{m.icon}</span>
-                          <span>{m.label}</span>
-                        </span>
-                      ))}
-                    </div>
-                    {!gareLabel && !presentTypes.length && (
-                      <p className="text-sm text-ink-light">Aucune ligne de transport en commun connue.</p>
-                    )}
-                    <p className="text-xs text-ink-muted mt-4">Source : GTFS transport.data.gouv.fr</p>
-                  </div>
-                )
-              })()}
-
-              {/* Section Risques naturels */}
-              {(() => {
-                const rd = data.score.donnees_brutes.risques_detail
-                const RISK_META = {
-                  inondation:  { label: 'Inondation',            icon: '🌊' },
-                  seisme:      { label: 'Séisme',                icon: '🏔️' },
-                  mvt_terrain: { label: 'Mouvement de terrain',  icon: '⛰️' },
-                  foret:       { label: 'Feu de forêt',          icon: '🔥' },
-                  avalanche:   { label: 'Avalanche',             icon: '❄️' },
-                }
-                const RISK_ORDER = ['inondation', 'seisme', 'mvt_terrain', 'foret', 'avalanche']
-
-                const risks = rd ? rd.split(',').filter(Boolean) : []
-                const sorted = RISK_ORDER.filter(r => risks.includes(r))
-
-                return (
-                  <div className="bg-white rounded-2xl border border-border p-6">
-                    <h2 className="font-display text-xl text-ink mb-4">Risques naturels</h2>
-                    {sorted.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {sorted.map(r => {
-                          const m = RISK_META[r]
-                          return (
-                            <span key={r} className="inline-flex items-center gap-1.5 text-sm bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full">
-                              <span>{m.icon}</span>
-                              <span>{m.label}</span>
+                      <div className="flex items-start gap-3">
+                        <span className="text-xs text-ink-muted w-20 flex-shrink-0 pt-0.5">Risques</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {riskTags.length > 0 ? riskTags.map(m => (
+                            <span key={m.label} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full">
+                              {m.icon} {m.label}
                             </span>
-                          )
-                        })}
+                          )) : (
+                            <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-800 border border-green-200 px-2.5 py-1 rounded-full">
+                              ✓ Aucun PPR naturel approuvé
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <p className="text-sm text-ink-light">Aucun Plan de Prévention des Risques (PPR) naturels approuvé.</p>
-                    )}
-                    <p className="text-xs text-ink-muted mt-4">Source : Géorisques GASPAR</p>
-                  </div>
-                )
-              })()}
 
-            </div>
-          )}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )
+          })()}
 
           {/* Quartiers IRIS */}
           {data.iris && data.iris.length > 0 && (() => {
