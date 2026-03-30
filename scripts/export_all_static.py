@@ -75,7 +75,7 @@ def main():
                prix_m2_median, prix_m2_median_2022, nb_gares, distance_gare_km,
                nb_arrets_tc, equipements_detail, poi_detail,
                nom_gare, transport_detail, risques_detail,
-               evolution_population_5ans, taux_pauvrete, updated_at
+               evolution_population_5ans, taux_pauvrete, revenu_median, updated_at
         FROM scores
     """).fetchall()
     scores_map = {r['code_insee']: dict(r) for r in scores_rows}
@@ -112,6 +112,7 @@ def main():
                 'evolution_population_5ans': s['evolution_population_5ans'],
                 'taux_pauvrete':         s['taux_pauvrete'],
                 'risques_detail':        s['risques_detail'] if s.get('risques_detail') else None,
+                'revenu_median':         s['revenu_median'] if s.get('revenu_median') and s['revenu_median'] > 0 else None,
             },
             'nb_categories_scorees': s['nb_categories_scorees'],
             'updated_at': s['updated_at'],
