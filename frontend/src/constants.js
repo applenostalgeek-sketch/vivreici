@@ -37,7 +37,7 @@ export const CATEGORY_META = {
 // Catégories disponibles au niveau IRIS
 // Local = données propres au quartier ; commune = injectées depuis la commune parente
 export const IRIS_CATEGORIES_LOCAL = ['equipements', 'sante', 'immobilier']
-export const IRIS_CATEGORIES_COMMUNE = ['securite', 'transports', 'education', 'risques']
+export const IRIS_CATEGORIES_COMMUNE = ['securite', 'transports', 'education', 'risques', 'demographie', 'environnement']
 export const IRIS_CATEGORIES = [...IRIS_CATEGORIES_LOCAL, ...IRIS_CATEGORIES_COMMUNE]
 
 // ─── Filtres & options ────────────────────────────────────────────────────────
