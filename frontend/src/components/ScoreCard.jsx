@@ -48,8 +48,8 @@ export default function ScoreCard({ lettre, score, size = 'lg' }) {
                 flex items-center justify-center rounded-lg font-display font-bold text-white transition-all
                 ${c.bg}
                 ${isActive
-                  ? 'w-10 h-10 text-base ring-2 ring-offset-2 ring-offset-paper ring-current'
-                  : 'w-8 h-8 text-sm'
+                  ? 'w-10 h-10 text-base ring-2 ring-offset-2 ring-offset-paper ring-current opacity-100'
+                  : 'w-8 h-8 text-sm opacity-30'
                 }
               `}
               style={isActive ? { ringColor: c.bg.replace('bg-', '') } : {}}
