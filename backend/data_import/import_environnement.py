@@ -120,7 +120,7 @@ def extraire_taux_artif(df: pd.DataFrame, fmt: str = "csv") -> pd.DataFrame | No
     result["taux_artif"] = pd.to_numeric(df[col_taux], errors="coerce")
 
     result = result.dropna(subset=["taux_artif"])
-    result = result[result["code_insee"].str.match(r"^\d{5}$")]
+    result = result[result["code_insee"].str.match(r"^\d{5}$|^2[AB]\d{3}$")]
     result["taux_espaces_nat"] = 100 - result["taux_artif"].clip(0, 100)
     result = result.drop_duplicates(subset="code_insee", keep="last")
     return result[["code_insee", "taux_espaces_nat"]]
