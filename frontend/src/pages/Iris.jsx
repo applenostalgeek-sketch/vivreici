@@ -231,15 +231,15 @@ export default function Iris() {
               const textCls = scoreToTextClass(pct)
               const stat = catStat(catKey)
               return (
-                <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="flex items-center gap-3">
                   <span className="text-base w-5 flex-shrink-0 text-center">{meta.icon}</span>
                   <span className="text-sm font-medium text-ink w-28 flex-shrink-0">{meta.label}</span>
-                  <div className="flex-1 h-6 bg-border rounded-full overflow-hidden">
+                  <div className="flex-1 h-7 bg-border rounded-full overflow-hidden">
                     <div className="h-full rounded-full flex items-center justify-end pr-2.5" style={{ width: `${pct}%`, backgroundColor: color }}>
-                      {pct >= 18 && <span className="text-white text-xs font-bold leading-none">{pct}</span>}
+                      {pct >= 18 && <span className="font-display text-white text-xs font-bold leading-none">{pct}</span>}
                     </div>
                   </div>
-                  {pct < 18 && <span className="text-xs font-bold w-6 flex-shrink-0" style={{ color }}>{pct}</span>}
+                  {pct < 18 && <span className="font-display text-xs font-bold w-6 flex-shrink-0" style={{ color }}>{pct}</span>}
                 </div>
               )
             }
@@ -301,7 +301,7 @@ export default function Iris() {
 
                 {/* ── Catégories ── */}
                 <div className="bg-white rounded-2xl border border-border p-6">
-                  <div className="divide-y divide-border">
+                  <div className="space-y-2.5">
                     {IRIS_CATEGORIES_LOCAL.map(k => <CatRow key={k} catKey={k} />)}
                   </div>
 
@@ -312,7 +312,7 @@ export default function Iris() {
                         <span className="text-xs text-ink-light uppercase tracking-wider flex-shrink-0">Données ville · {data.commune_nom}</span>
                         <div className="flex-1 h-px bg-border" />
                       </div>
-                      <div className="divide-y divide-border">
+                      <div className="space-y-2.5">
                         {IRIS_CATEGORIES_COMMUNE.map(k => <CatRow key={k} catKey={k} />)}
                       </div>
                     </>
