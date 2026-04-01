@@ -301,7 +301,9 @@ export default function Iris() {
                 {/* ── Catégories ── */}
                 <div className="bg-white rounded-2xl border border-border p-6">
                   <div className="space-y-2.5">
-                    {IRIS_CATEGORIES_LOCAL.map(k => <CatRow key={k} catKey={k} />)}
+                    {[...IRIS_CATEGORIES_LOCAL]
+                      .sort((a, b) => (data.score.sous_scores?.[b] ?? -1) - (data.score.sous_scores?.[a] ?? -1))
+                      .map(k => <CatRow key={k} catKey={k} />)}
                   </div>
 
                   {hasCommune && (
@@ -312,7 +314,9 @@ export default function Iris() {
                         <div className="flex-1 h-px bg-border" />
                       </div>
                       <div className="space-y-2.5">
-                        {IRIS_CATEGORIES_COMMUNE.map(k => <CatRow key={k} catKey={k} />)}
+                        {[...IRIS_CATEGORIES_COMMUNE]
+                          .sort((a, b) => (data.score.sous_scores?.[b] ?? -1) - (data.score.sous_scores?.[a] ?? -1))
+                          .map(k => <CatRow key={k} catKey={k} />)}
                       </div>
                     </>
                   )}
