@@ -290,14 +290,13 @@ export default function Commune() {
                       return (
                         <div key={key} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                           <span className="text-base w-5 flex-shrink-0 text-center">{meta.icon}</span>
-                          <span className="text-sm font-medium text-ink w-24 sm:w-32 flex-shrink-0">{meta.label}</span>
-                          <span className={`font-display font-bold text-base w-5 flex-shrink-0 ${textCls}`}>
-                            {pct >= 80 ? 'A' : pct >= 60 ? 'B' : pct >= 40 ? 'C' : pct >= 20 ? 'D' : 'E'}
-                          </span>
-                          <div className="flex-1 h-5 bg-border rounded-full overflow-hidden">
-                            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                          <span className="text-sm font-medium text-ink w-28 flex-shrink-0">{meta.label}</span>
+                          <div className="flex-1 h-6 bg-border rounded-full overflow-hidden">
+                            <div className="h-full rounded-full flex items-center justify-end pr-2.5" style={{ width: `${pct}%`, backgroundColor: color }}>
+                              {pct >= 18 && <span className="text-white text-xs font-bold leading-none">{pct}</span>}
+                            </div>
                           </div>
-                          <span className="hidden sm:block text-xs text-ink-muted text-right w-44 flex-shrink-0 truncate">{stat}</span>
+                          {pct < 18 && <span className="text-xs font-bold w-6 flex-shrink-0" style={{ color }}>{pct}</span>}
                         </div>
                       )
                     })}
