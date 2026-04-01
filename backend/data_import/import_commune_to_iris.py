@@ -48,7 +48,8 @@ async def run():
         result = await session.execute(text("""
             SELECT code_insee,
                    score_securite, score_transports, score_education, score_sante,
-                   score_risques, score_demographie, score_environnement
+                   score_risques, score_demographie, score_environnement,
+                   score_equipements, score_immobilier
             FROM scores
         """))
         commune_scores = {}
@@ -61,8 +62,25 @@ async def run():
                 'risques':       float(r[5]) if r[5] is not None and r[5] >= 0 else -1,
                 'demographie':   float(r[6]) if r[6] is not None and r[6] >= 0 else -1,
                 'environnement': float(r[7]) if r[7] is not None and r[7] >= 0 else -1,
+                'equipements':   float(r[8]) if r[8] is not None and r[8] >= 0 else -1,
+                'immobilier':    float(r[9]) if r[9] is not None and r[9] >= 0 else -1,
             }
         print(f"  {len(commune_scores)} communes chargées")
+
+        # Calcul médianes immobilier par département (fallback si commune sans DVF)
+        import statistics
+        dept_immo: dict[str, float] = {}
+        dept_data: dict[str, list] = {}
+        for code, cs in commune_scores.items():
+            if cs['immobilier'] >= 0:
+                dept = code[:2]
+                dept_data.setdefault(dept, []).append(cs['immobilier'])
+        for dept, vals in dept_data.items():
+            dept_immo[dept] = round(statistics.median(vals), 1)
+        national_immo = round(statistics.median(
+            [v for vals in dept_data.values() for v in vals]
+        ), 1)
+        print(f"  Médiane immobilier nationale (fallback) : {national_immo}")
 
         # ── 2. Charger tous les IRIS déjà scorés localement ─────────────────
         # On n'enrichit que les IRIS qui ont déjà au moins 1 score local (equip/sante/immo).
@@ -101,10 +119,21 @@ async def run():
             s_demo    = cs.get('demographie', -1)
             s_env     = cs.get('environnement', -1)
 
-            # Fallback santé : si IRIS n'a pas de score santé mais la commune si
-            if (sante <= 0) and s_sante_commune > 0:
+            # Fallbacks depuis la commune pour les catégories locales manquantes
+            s_eq_commune    = cs.get('equipements', -1)
+            s_immo_commune  = cs.get('immobilier', -1)
+
+            if sante < 0 and s_sante_commune >= 0:
                 sante = round(s_sante_commune, 1)
                 nb_sante_fallback += 1
+            if seq < 0 and s_eq_commune >= 0:
+                seq = round(s_eq_commune, 1)
+            if simmo < 0 and s_immo_commune >= 0:
+                simmo = round(s_immo_commune, 1)
+            elif simmo < 0:
+                # Dernier recours : médiane du département
+                dept = code_commune[:2]
+                simmo = dept_immo.get(dept, national_immo)
 
             if any(v >= 0 for v in [s_secu, s_trans, s_edu, s_risques, s_demo, s_env]):
                 nb_with_commune_data += 1
@@ -148,7 +177,9 @@ async def run():
         for i, params in enumerate(batches):
             await session.execute(text("""
                 UPDATE iris_scores SET
+                    score_equipements = :seq,
                     score_sante      = :ss,
+                    score_immobilier  = :simmo,
                     score_securite   = :ssecu,
                     score_transports = :strans,
                     score_education  = :sedu,
