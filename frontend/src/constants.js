@@ -1,7 +1,7 @@
 // ─── Score system ─────────────────────────────────────────────────────────────
 
 export const SCORE_COLORS = {
-  A: '#16A34A', B: '#65A30D', C: '#CA8A04', D: '#EA580C', E: '#DC2626',
+  A: '#5a9e72', B: '#3d9788', C: '#c49020', D: '#c96040', E: '#b84040',
 }
 
 // Couleurs de la barre de progression (légèrement plus claires que SCORE_COLORS)
