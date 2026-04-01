@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
-import { SCORE_COLORS } from '../constants.js'
 import { usePageMeta } from '../hooks/usePageMeta.js'
 
 const SORT_OPTIONS = [
@@ -135,7 +134,6 @@ export default function QuartiersCommune() {
             </div>
 
             {sorted.map((z, i) => {
-              const barColor = SCORE_COLORS[z.lettre] || '#9CA3AF'
               // Séparateur avant la première zone partielle
               const showSeparator = z.donnees_partielles && (i === 0 || !sorted[i-1].donnees_partielles)
               return (
@@ -167,12 +165,7 @@ export default function QuartiersCommune() {
                       {z.lettre != null ? (
                         <>
                           <span className="font-mono text-sm text-ink-light hidden md:inline">{Math.round(z.score_global)}</span>
-                          <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center font-display font-bold text-white text-sm flex-shrink-0"
-                            style={{ backgroundColor: barColor }}
-                          >
-                            {z.lettre}
-                          </div>
+                          <div className={`score-badge w-8 h-8 text-sm score-badge-${z.lettre}`}>{z.lettre}</div>
                         </>
                       ) : z.score_global != null ? (
                         <span className="text-xs text-ink-light hidden md:inline">{Math.round(z.score_global)} pts</span>
