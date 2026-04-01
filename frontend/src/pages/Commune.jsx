@@ -294,7 +294,7 @@ export default function Commune() {
                           <span className={`font-display font-bold text-base w-5 flex-shrink-0 ${textCls}`}>
                             {pct >= 80 ? 'A' : pct >= 60 ? 'B' : pct >= 40 ? 'C' : pct >= 20 ? 'D' : 'E'}
                           </span>
-                          <div className="flex-1 h-1 bg-paper rounded-full overflow-hidden">
+                          <div className="flex-1 h-5 bg-border rounded-full overflow-hidden">
                             <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
                           </div>
                           <span className="hidden sm:block text-xs text-ink-muted text-right w-44 flex-shrink-0 truncate">{stat}</span>
