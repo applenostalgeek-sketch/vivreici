@@ -290,12 +290,11 @@ export default function Commune() {
                         <div key={key} className="flex items-center gap-3">
                           <span className="text-base w-5 flex-shrink-0 text-center">{meta.icon}</span>
                           <span className="text-sm font-medium text-ink w-28 flex-shrink-0">{meta.label}</span>
-                          <div className="flex-1 h-7 bg-border rounded-full overflow-hidden">
-                            <div className="h-full rounded-full flex items-center justify-end pr-2.5" style={{ width: `${pct}%`, backgroundColor: color }}>
-                              {pct >= 18 && <span className="font-display text-white text-xs font-bold leading-none">{pct}</span>}
+                          <div className="flex-1 h-7 bg-border rounded-lg overflow-hidden">
+                            <div className="h-full rounded-lg flex items-center justify-end pr-2.5" style={{ width: `${pct}%`, backgroundColor: color }}>
+                              <span className="font-display text-white text-xs font-extrabold leading-none">{pct}</span>
                             </div>
                           </div>
-                          {pct < 18 && <span className="font-display text-xs font-bold w-6 flex-shrink-0" style={{ color }}>{pct}</span>}
                         </div>
                       )
                     })}
