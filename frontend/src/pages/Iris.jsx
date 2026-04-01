@@ -232,11 +232,11 @@ export default function Iris() {
               const stat = catStat(catKey)
               return (
                 <div className="flex items-center gap-3">
-                  <span className="text-base w-5 flex-shrink-0 text-center">{meta.icon}</span>
-                  <span className="text-sm font-medium text-ink w-28 flex-shrink-0">{meta.label}</span>
+                  <span className="text-sm w-5 flex-shrink-0 text-center">{meta.icon}</span>
+                  <span className="text-xs font-semibold text-ink-light w-24 flex-shrink-0">{meta.label}</span>
                   <div className="flex-1 h-7 bg-border rounded-lg overflow-hidden">
-                    <div className="h-full rounded-lg flex items-center justify-end pr-2.5" style={{ width: `${pct}%`, backgroundColor: color }}>
-                      <span className="font-display text-white text-xs font-extrabold leading-none">{pct}</span>
+                    <div className="h-full rounded-lg flex items-center justify-end pr-2" style={{ width: `${pct}%`, backgroundColor: color, backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.18) 100%)' }}>
+                      <span className="font-display text-white text-xs font-bold leading-none">{pct}</span>
                     </div>
                   </div>
                 </div>
