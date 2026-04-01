@@ -122,6 +122,7 @@ def iris_score_to_dict(iz: IrisZone, s: IrisScore) -> dict:
                 "transports": s.score_transports if s.score_transports >= 0 else None,
                 "education": s.score_education if s.score_education >= 0 else None,
                 "risques": s.score_risques if s.score_risques >= 0 else None,
+                "demographie": s.score_demographie if s.score_demographie >= 0 else None,
             },
             "donnees_brutes": {
                 "nb_equipements": s.nb_equipements,
