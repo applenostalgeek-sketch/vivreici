@@ -32,8 +32,9 @@ async def run():
     # Migration : ajouter colonnes manquantes à iris_scores
     async with async_session() as session:
         for col, definition in [
-            ("score_risques",     "REAL DEFAULT -1"),
-            ("score_demographie", "REAL DEFAULT -1"),
+            ("score_risques",      "REAL DEFAULT -1"),
+            ("score_demographie",  "REAL DEFAULT -1"),
+            ("score_environnement","REAL DEFAULT -1"),
         ]:
             try:
                 await session.execute(text(f"ALTER TABLE iris_scores ADD COLUMN {col} {definition}"))
@@ -47,7 +48,7 @@ async def run():
         result = await session.execute(text("""
             SELECT code_insee,
                    score_securite, score_transports, score_education, score_sante,
-                   score_risques, score_demographie
+                   score_risques, score_demographie, score_environnement
             FROM scores
         """))
         commune_scores = {}
@@ -59,6 +60,7 @@ async def run():
                 'sante':         float(r[4]) if r[4] is not None and r[4] >= 0 else -1,
                 'risques':       float(r[5]) if r[5] is not None and r[5] >= 0 else -1,
                 'demographie':   float(r[6]) if r[6] is not None and r[6] >= 0 else -1,
+                'environnement': float(r[7]) if r[7] is not None and r[7] >= 0 else -1,
             }
         print(f"  {len(commune_scores)} communes chargées")
 
@@ -97,13 +99,14 @@ async def run():
             s_sante_commune = cs.get('sante', -1)
             s_risques = cs.get('risques', -1)
             s_demo    = cs.get('demographie', -1)
+            s_env     = cs.get('environnement', -1)
 
             # Fallback santé : si IRIS n'a pas de score santé mais la commune si
             if (sante <= 0) and s_sante_commune > 0:
                 sante = round(s_sante_commune, 1)
                 nb_sante_fallback += 1
 
-            if any(v >= 0 for v in [s_secu, s_trans, s_edu, s_risques, s_demo]):
+            if any(v >= 0 for v in [s_secu, s_trans, s_edu, s_risques, s_demo, s_env]):
                 nb_with_commune_data += 1
 
             # Recalcul score global avec toutes les catégories disponibles
@@ -116,6 +119,7 @@ async def run():
             if s_edu >= 0:     sous_scores['education'] = s_edu
             if s_risques >= 0: sous_scores['risques'] = s_risques
             if s_demo >= 0:    sous_scores['demographie'] = s_demo
+            if s_env >= 0:     sous_scores['environnement'] = s_env
 
             if not sous_scores:
                 continue
@@ -133,6 +137,7 @@ async def run():
                 'sedu':   s_edu,
                 'srisq':  s_risques,
                 'sdemo':  s_demo,
+                'senv':   s_env,
             })
 
         print(f"  → {nb_with_commune_data} IRIS enrichis avec données communes")
@@ -147,8 +152,9 @@ async def run():
                     score_securite   = :ssecu,
                     score_transports = :strans,
                     score_education  = :sedu,
-                    score_risques    = :srisq,
+                    score_risques     = :srisq,
                     score_demographie = :sdemo,
+                    score_environnement = :senv,
                     score_global     = :sg,
                     lettre           = :l,
                     nb_categories_scorees = :nb,
