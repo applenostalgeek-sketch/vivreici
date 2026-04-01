@@ -72,6 +72,7 @@ def score_to_dict(score: Score) -> dict:
             "transports": score.score_transports if score.score_transports >= 0 else None,
             "environnement": score.score_environnement if score.score_environnement >= 0 else None,
             "demographie": score.score_demographie if score.score_demographie >= 0 else None,
+            "risques": score.score_risques if score.score_risques >= 0 else None,
         },
         "donnees_brutes": {
             "nb_equipements": score.nb_equipements,
@@ -120,6 +121,7 @@ def iris_score_to_dict(iz: IrisZone, s: IrisScore) -> dict:
                 "securite": s.score_securite if s.score_securite >= 0 else None,
                 "transports": s.score_transports if s.score_transports >= 0 else None,
                 "education": s.score_education if s.score_education >= 0 else None,
+                "risques": s.score_risques if s.score_risques >= 0 else None,
             },
             "donnees_brutes": {
                 "nb_equipements": s.nb_equipements,
