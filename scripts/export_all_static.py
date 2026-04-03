@@ -72,10 +72,11 @@ def main():
                score_sante, score_transports, score_environnement, score_demographie,
                score_risques,
                nb_equipements, apl_medecins, taux_criminalite,
-               prix_m2_median, prix_m2_median_2022, nb_gares, distance_gare_km,
+               prix_m2_median, prix_m2_median_2022, prix_m2_estime, nb_gares, distance_gare_km,
                nb_arrets_tc, equipements_detail, poi_detail,
                nom_gare, transport_detail, risques_detail,
-               evolution_population_5ans, taux_pauvrete, revenu_median, updated_at
+               evolution_population_5ans, taux_pauvrete, revenu_median, updated_at,
+               min_dist_college_km, taux_espaces_nat, qualite_air_moy, qualite_air_nb_jours
         FROM scores
     """).fetchall()
     scores_map = {r['code_insee']: dict(r) for r in scores_rows}
@@ -103,6 +104,7 @@ def main():
                 'taux_criminalite':      s['taux_criminalite'],
                 'prix_m2_median':        s['prix_m2_median'],
                 'prix_m2_median_2022':   s['prix_m2_median_2022'],
+                'prix_m2_estime':       bool(s.get('prix_m2_estime')),
                 'nb_gares':              s['nb_gares'] or 0,
                 'distance_gare_km':      s['distance_gare_km'] if s['distance_gare_km'] and s['distance_gare_km'] >= 0 else None,
                 'nom_gare':              s['nom_gare'] if s['nom_gare'] else None,
@@ -113,6 +115,10 @@ def main():
                 'taux_pauvrete':         s['taux_pauvrete'],
                 'risques_detail':        s['risques_detail'] if s.get('risques_detail') else None,
                 'revenu_median':         s['revenu_median'] if s.get('revenu_median') and s['revenu_median'] > 0 else None,
+                'min_dist_college_km':   s['min_dist_college_km'] if s.get('min_dist_college_km') and s['min_dist_college_km'] > 0 else None,
+                'taux_espaces_nat':      s['taux_espaces_nat'] if s.get('taux_espaces_nat') is not None and s['taux_espaces_nat'] >= 0 else None,
+                'qualite_air_moy':       s['qualite_air_moy'] if s.get('qualite_air_moy') is not None and s['qualite_air_moy'] >= 0 else None,
+                'qualite_air_nb_jours':  s['qualite_air_nb_jours'] if s.get('qualite_air_nb_jours') and s['qualite_air_nb_jours'] > 0 else None,
             },
             'nb_categories_scorees': s['nb_categories_scorees'],
             'updated_at': s['updated_at'],
@@ -368,6 +374,26 @@ def main():
     for code_iris, r in iris_map.items():
         lettre = iris_lettre(r)
 
+        code_commune = r['code_commune']
+        commune = communes_map.get(code_commune)
+        commune_nom = commune['nom'] if commune else code_commune
+        # Données depuis la commune parente pour affichage dans la fiche IRIS
+        cs_env = scores_map.get(code_commune, {})
+        def _env_val(k):
+            v = cs_env.get(k)
+            return v if v is not None and v >= 0 else None
+        commune_env = {
+            'taux_espaces_nat':     _env_val('taux_espaces_nat'),
+            'qualite_air_moy':      _env_val('qualite_air_moy'),
+            'qualite_air_nb_jours': cs_env.get('qualite_air_nb_jours') if cs_env.get('qualite_air_nb_jours') and cs_env['qualite_air_nb_jours'] > 0 else None,
+            'apl_medecins':         _env_val('apl_medecins'),
+            'taux_criminalite':     _env_val('taux_criminalite'),
+            'risques_detail':       cs_env.get('risques_detail') if cs_env.get('risques_detail') else None,
+            'nom_gare':             cs_env.get('nom_gare') if cs_env.get('nom_gare') else None,
+            'distance_gare_km':     cs_env.get('distance_gare_km') if cs_env.get('distance_gare_km') and cs_env['distance_gare_km'] >= 0 else None,
+            'transport_detail':     safe_json(cs_env.get('transport_detail')),
+        }
+
         score_obj = {
             'score_global': r.get('score_global'),
             'lettre': lettre,
@@ -390,13 +416,19 @@ def main():
                 'taux_pauvrete':         r.get('taux_pauvrete'),
                 'equipements_detail':    safe_json(r.get('equipements_detail')),
                 'poi_detail':            safe_json(r.get('poi_detail')),
+                # Données depuis la commune parente (non disponibles à l'échelle IRIS)
+                'taux_espaces_nat':      commune_env.get('taux_espaces_nat'),
+                'qualite_air_moy':       commune_env.get('qualite_air_moy'),
+                'qualite_air_nb_jours':  commune_env.get('qualite_air_nb_jours'),
+                'apl_medecins':          commune_env.get('apl_medecins'),
+                'taux_criminalite':      commune_env.get('taux_criminalite'),
+                'risques_detail':        commune_env.get('risques_detail'),
+                'nom_gare':              commune_env.get('nom_gare'),
+                'distance_gare_km':      commune_env.get('distance_gare_km'),
+                'transport_detail':      commune_env.get('transport_detail'),
             },
             'nb_categories_scorees': r.get('nb_categories_scorees') or 0,
         } if r.get('nb_categories_scorees') else None
-
-        code_commune = r['code_commune']
-        commune = communes_map.get(code_commune)
-        commune_nom = commune['nom'] if commune else code_commune
         # Contexte commune — affiché sur la fiche IRIS pour comparer avec la ville
         commune_score_ref = None
         if commune:

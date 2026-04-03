@@ -10,15 +10,15 @@ const LETTRES = [
 ]
 
 const CATEGORIES = [
-  { icon: '🏪', nom: 'Équipements',      poids: 20, detail: 'Commerces, services et équipements de proximité',                                        src: 'BPE 2024 INSEE' },
-  { icon: '🚆', nom: 'Transports',       poids: 18, detail: 'Distance gare SNCF + densité arrêts bus, métro, tram',                                   src: 'SNCF · transport.data.gouv.fr' },
-  { icon: '🏥', nom: 'Santé',            poids: 18, detail: 'Accessibilité médecins généralistes (zone d\'attraction)',                               src: 'APL 2023 DREES' },
-  { icon: '🔒', nom: 'Sécurité',         poids: 14, detail: 'Taux de criminalité — score inversé (moins = mieux)',                                    src: 'SSMSI 2024' },
-  { icon: '🏡', nom: 'Immobilier',       poids: 14, detail: 'Prix au m² médian — score inversé (moins cher = mieux)',                                 src: 'DVF 2024 DGFiP' },
-  { icon: '⚠️', nom: 'Risques naturels', poids:  8, detail: 'PPR approuvés — inondation (35 %), séisme (30 %), mouvement de terrain (20 %), feux de forêt (10 %), avalanche (5 %)',  src: 'GASPAR Géorisques' },
-  { icon: '🎓', nom: 'Éducation',        poids:  7, detail: 'IPS collèges (40 %) + résultats brevet DNB (40 %) + lycées pro (20 %)',                  src: 'DEPP 2021-2025' },
-  { icon: '🌿', nom: 'Environnement',    poids:  7, detail: 'Part d\'espaces naturels et agricoles non artificialisés',                               src: 'CEREMA 2023' },
-  { icon: '📈', nom: 'Démographie',      poids:  4, detail: 'Évolution de la population sur 6 ans (2017 → 2023)',                                     src: 'Populations de référence INSEE 2023' },
+  { icon: '🏪', nom: 'Équipements',      poids: 20, detail: 'Score de présence — variété des services (pharmacie, supermarché, boulangerie…), pas de densité. Avoir 50 pharmacies = avoir 1.',  src: 'BPE 2024 INSEE' },
+  { icon: '🚆', nom: 'Transports',       poids: 18, detail: 'Composite 50 % distance gare SNCF + 50 % densité arrêts TC (bus, métro, tram, RER).',    src: 'SNCF · transport.data.gouv.fr' },
+  { icon: '🏥', nom: 'Santé',            poids: 18, detail: 'Consultations accessibles par habitant et par an (APL médecins généralistes, aire de chalandise).',  src: 'APL 2023 DREES' },
+  { icon: '🔒', nom: 'Sécurité',         poids: 14, detail: 'Taux de criminalité — score inversé (moins = mieux).',                                   src: 'SSMSI 2024' },
+  { icon: '🏡', nom: 'Immobilier',       poids: 14, detail: 'Prix au m² médian — score inversé (moins cher = mieux). Communes sans DVF : estimation spatiale KNN (voisines de même taille).',  src: 'DVF 2024 DGFiP' },
+  { icon: '⚠️', nom: 'Risques naturels', poids:  9, detail: 'PPR approuvés — inondation (35 %), séisme (30 %), mouvement de terrain (20 %), feux de forêt (10 %), avalanche (5 %).',  src: 'GASPAR Géorisques' },
+  { icon: '🎓', nom: 'Éducation',        poids:  8, detail: 'Qualité (90 %) : IPS collèges + DNB + lycées pro, agrégés sur 30 km. Proximité (10 %) : distance au collège le plus proche.',  src: 'DEPP 2021-2025' },
+  { icon: '🌿', nom: 'Environnement',    poids:  8, detail: 'Composite 50 % artificialisation (espaces naturels CEREMA) + 50 % qualité de l\'air (indice ATMO moyen annuel).',  src: 'CEREMA 2023 · Atmo France' },
+  { icon: '📈', nom: 'Démographie',      poids:  4, detail: 'Évolution de la population sur 5 ans (2016 → 2021).',                                    src: 'Populations légales INSEE' },
 ]
 
 const MAX_POIDS = 20
@@ -184,9 +184,10 @@ export default function Methode() {
           </p>
           <p className="text-sm text-ink-light leading-relaxed mt-3">
             Les quartiers sont scorés sur <strong className="text-ink">7 catégories</strong> :
-            équipements, santé et immobilier sont mesurés localement.
+            équipements, santé et immobilier sont mesurés localement (BPE par IRIS, DVF par géolocalisation).
             Sécurité, transports, éducation et risques naturels reprennent le score
             de la commune parente (ces données ne sont pas disponibles à l'échelle du quartier).
+            Même méthodologie et mêmes poids que les communes — scores comparables.
           </p>
         </section>
 

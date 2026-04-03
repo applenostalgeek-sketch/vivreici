@@ -80,48 +80,47 @@ CODES_SPORTS_LOISIRS = {"F101", "F102", "F111", "F302", "F201", "F303", "F310"}
 CODES_TRANSPORTS = {"H102"}
 CODES_ALIMENTAIRE = {"B101", "B102", "B201", "B203"}
 
-# Poids par type d'équipement pour le score pondéré
-# 0 = exclu (déjà dans un autre score, présent partout, ou mal référencé)
-POIDS_EQUIPEMENTS = {
-    # Alimentaire — accès quotidien, très différenciant
+# Score de présence : poids si le type est PRÉSENT dans la commune.
+# Règle : min(count, 1) × poids — avoir 50 pharmacies vaut autant qu'en avoir 1.
+# Pas de division par population → aucun biais taille de commune.
+# 0 = exclu (doublon avec un autre score, présent partout, ou peu discriminant)
+POIDS_PRESENCE = {
+    # Alimentation quotidienne
     "B101": 4,   # supermarché
-    "B102": 5,   # hypermarché
+    "B102": 4,   # hypermarché (distinct du supermarché — avoir les deux est un bonus légitime)
     "B201": 2,   # boulangerie
     "B203": 1,   # boucherie
 
-    # Santé — médecins exclus (→ score_sante séparé via APL)
+    # Santé — médecins exclus (→ score_sante APL)
     "D101": 0,   # médecin_généraliste → score_sante
     "D102": 0,   # médecin_spécialiste → score_sante
-    "D231": 5,   # pharmacie — essentielle
-    "D303": 3,   # hôpital
-    "D307": 3,   # urgences
+    "D231": 4,   # pharmacie — essentielle
+    "D303": 2,   # hôpital
+    "D307": 2,   # urgences
 
     # Services publics
-    "A101": 0,   # mairie — présente dans toutes les communes, ne différencie pas
-    "A116": 2,   # bureau_poste
-    "A304": 0,   # agence_bancaire — exclu (mal référencé dans la BPE)
+    "A101": 0,   # mairie — présente partout, ne différencie pas
+    "A116": 2,   # bureau de poste
+    "A304": 0,   # agence bancaire — données BPE peu fiables
 
-    # Éducation — exclu du score (biais petites communes + qualité = score_education séparé)
-    "C101": 0,   # école_maternelle
-    "C104": 0,   # école_élémentaire
-    "C201": 0,   # collège
-    "C301": 0,   # lycée
-    "C302": 0,   # lycée_professionnel
+    # Éducation — exclu (score_education séparé)
+    "C101": 0, "C104": 0, "C201": 0, "C301": 0, "C302": 0,
 
-    # Sports — exclus du score (biais petites communes : 1 piscine × 5pts/hab >> grandes villes)
-    "F101": 0,   # gymnase
-    "F102": 0,   # terrain_football
-    "F111": 0,   # piscine
-    "F302": 0,   # salle_sport
+    # Sports — inclus à poids faible (plus de biais avec la présence capée à 1)
+    "F101": 1,   # gymnase
+    "F102": 0,   # terrain_football — trop répandu, ne discrimine pas
+    "F111": 1,   # piscine
+    "F302": 0,   # salle_sport (regroupé avec gymnase dans la pratique)
 
-    # Culture — exclus du score (même biais)
-    "F201": 0,   # cinéma
-    "F303": 0,   # bibliothèque
-    "F310": 0,   # théâtre
+    # Culture
+    "F201": 1,   # cinéma
+    "F303": 1,   # bibliothèque / médiathèque
+    "F310": 1,   # théâtre
 
     # Transports — exclu (→ score_transports séparé)
     "H102": 0,   # gare_voyageurs
 }
+# Score max théorique : 4+4+2+1+4+2+2+2+1+1+1+1+1 = 26 pts (commune avec tout)
 
 # Services du quotidien — pour rétrocompatibilité display
 CODES_ESSENTIELS = CODES_ALIMENTAIRE | CODES_PHARMACIES | CODES_SERVICES_PUBLICS
@@ -180,12 +179,12 @@ def aggreger_par_commune(df: pd.DataFrame) -> pd.DataFrame:
     # Essentiels = alimentation + pharmacie + services publics (rétrocompatibilité)
     pivot["nb_essentiels"] = pivot[[c for c in CODES_ESSENTIELS if c in pivot.columns]].sum(axis=1)
 
-    # Score pondéré : chaque type d'équipement contribue selon son importance réelle
-    # Médecins, mairie, agence_bancaire, gare = poids 0 (autres scores ou non-différenciant)
-    cols_poids = [(code, poids) for code, poids in POIDS_EQUIPEMENTS.items()
-                  if poids > 0 and code in pivot.columns]
-    pivot["nb_equipements_pondere"] = sum(
-        pivot[code] * poids for code, poids in cols_poids
+    # Score de présence : min(count, 1) × poids pour chaque type
+    # Avoir 50 pharmacies vaut autant qu'en avoir 1 — on mesure la PRÉSENCE, pas la densité
+    cols_presence = [(code, poids) for code, poids in POIDS_PRESENCE.items()
+                     if poids > 0 and code in pivot.columns]
+    pivot["presence_score"] = sum(
+        pivot[code].clip(upper=1) * poids for code, poids in cols_presence
     )
 
     # Construire le JSON de détail par type (seulement les types présents)
@@ -195,7 +194,7 @@ def aggreger_par_commune(df: pd.DataFrame) -> pd.DataFrame:
         return json.dumps(d, ensure_ascii=False) if d else None
     pivot["equipements_detail"] = pivot.apply(build_detail, axis=1)
 
-    return pivot[["code_insee", "nb_equipements_total", "nb_equipements_pondere", "nb_essentiels",
+    return pivot[["code_insee", "nb_equipements_total", "presence_score", "nb_essentiels",
                   "nb_medecins", "nb_pharmacies", "nb_sports_loisirs", "nb_transports",
                   "nb_alimentaire", "equipements_detail"]]
 
@@ -223,7 +222,7 @@ async def run():
     df = df_all.merge(df_equip, on="code_insee", how="left")
     df["population"] = df["population"].fillna(0).astype(int)
     # Remplir les colonnes équipements à 0 pour les communes sans données BPE
-    int_cols = ["nb_equipements_total", "nb_equipements_pondere", "nb_essentiels", "nb_medecins",
+    int_cols = ["nb_equipements_total", "presence_score", "nb_essentiels", "nb_medecins",
                 "nb_pharmacies", "nb_sports_loisirs", "nb_transports", "nb_alimentaire"]
     for col in int_cols:
         if col in df.columns:
@@ -231,12 +230,7 @@ async def run():
     if "equipements_detail" in df.columns:
         df["equipements_detail"] = df["equipements_detail"].where(df["equipements_detail"].notna(), None)
 
-    # Calculer les métriques normalisées
-    # Score basé sur le count pondéré (médecins/mairie/gare exclus — autres scores)
-    # Poids = importance réelle : pharmacie×5, supermarché×4, cinéma×3, boulangerie×2...
-    df["equipements_pour_1000"] = df.apply(
-        lambda r: normaliser_par_habitant(r["nb_equipements_pondere"], r["population"], 1000), axis=1
-    )
+    # Métriques normalisées
     df["medecins_pour_10000"] = df.apply(
         lambda r: normaliser_par_habitant(r["nb_medecins"], r["population"], 10000), axis=1
     )

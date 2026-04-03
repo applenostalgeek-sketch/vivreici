@@ -30,9 +30,10 @@ Depuis `/Users/admin/vivreici/` :
 8. `python -m backend.data_import.import_filosofi`    → revenus/pauvreté (Filosofi 2021)
 9. `python3 -m backend.data_import.import_transports`  → score transports (gares SNCF, ~1min)
 10. `python3 -m backend.data_import.import_demographie` → évolution population 2016→2021
-11. `python3 -m backend.data_import.import_environnement` → artificialisation sols (data.gouv.fr)
-12. `python3 -m backend.data_import.import_apl`         → santé APL DREES 2023 (remplace BPE medecins)
-13. `python3 -m backend.data_import.import_risques`     → risques naturels PPR (GASPAR Géorisques, ~5min)
+11. `python3 -m backend.data_import.import_environnement` → artificialisation sols (CEREMA/data.gouv.fr)
+12. `python3 -m backend.data_import.import_qualite_air`   → qualité air ATMO France (~15min, WFS public, 12 mois glissants)
+13. `python3 -m backend.data_import.import_apl`         → santé APL DREES 2023 (remplace BPE medecins)
+14. `python3 -m backend.data_import.import_risques`     → risques naturels PPR (GASPAR Géorisques, ~5min)
 
 ### Import POI — présence équipements par commune ET par IRIS (sources officielles)
 Depuis `/Users/admin/vivreici/` (ordre recommandé, chaque script est indépendant) :
@@ -74,16 +75,37 @@ Depuis `/Users/admin/vivreici/` :
 - `iris_scores` : 6 sous-scores IRIS (equipements, sante, immobilier — locaux + securite, transports, education — injectés depuis commune), score_global, lettre
 
 ### Scores (0-100, percentile national)
-- `score_equipements` : BPE 2024 (équipements pour 1000 hab)
+- `score_equipements` : BPE 2024 — **score de présence** (pas de division par population).
+  - Méthode : pour chaque type de service, `min(count, 1) × poids` → somme = `presence_score`. Percentile national parmi communes avec presence_score > 0. Communes à 0 → score 0.
+  - Poids : pharmacie(4), supermarché(4), hypermarché(4), boulangerie(2), poste(2), hôpital(2), urgences(2), boucherie(1), gymnase(1), piscine(1), cinéma(1), bibliothèque(1), théâtre(1). Score max théorique : 26 pts.
+  - Exclu du score : médecins (→ score_sante), mairie (partout), écoles (→ score_education), terrain_football (trop répandu), gare (→ score_transports).
+  - **Logique clé** : avoir 50 pharmacies = avoir 1 pharmacie. On mesure la variété des services présents, pas leur densité. Élimine le biais petites communes.
 - `score_sante` : BPE 2024 (médecins pour 10000 hab)
 - `score_securite` : SSMSI 2024 (taux criminalité, sens inverse)
-- `score_immobilier` : DVF 2024 (prix m² médian, sens inverse)
-- `score_education` : IPS collèges 2024-2025 (40%) + DNB brevet 2021 (40%) + lycées pro (20%). Biais IPS atténué par le DNB.
+- `score_immobilier` : DVF 2024 (prix m² médian, sens inverse — moins cher = score plus élevé).
+  - **Source primaire** : DVF (Demandes de Valeurs Foncières) — transactions réelles, 24 298 communes (~69%).
+  - **Fallback KNN spatial** : pour les 11 079 communes sans DVF (dont Alsace-Moselle 67/68/57 = livre foncier local, pas de DVF).
+    - Méthode : KDTree par tranche de population (<500, 500-2k, 2k-10k, 10k-50k, 50k+). Pour chaque commune manquante, moyenne pondérée (1/d²) des 10 communes DVF les plus proches dans la même tranche.
+    - Pourquoi stratifié : évite qu'un village rural copie le prix d'une ville voisine (et inversement).
+    - `prix_m2_estime = 1` en DB pour identifier les estimations (vs données DVF réelles).
+    - Couverture finale : 99.9% (35 377 communes).
+  - Percentile calculé sur l'ensemble (DVF + estimés).
+  - `MIN_TRANSACTIONS = 5` : communes DVF avec < 5 transactions exclues (médiane non fiable).
+- `score_education` : Score APL-style sur rayon 30km. Pour chaque commune, agrège tous les établissements dans un rayon de 30km pondérés par 1/distance (distance min clampée à 1km pour éviter div/0).
+  - **Qualité (90%)** : composite IPS collèges 2024-2025 (40%) + DNB brevet 2021 (40%) + lycées pro (20%). Percentile national.
+  - **Proximité (10%)** : percentile inverse de la distance au collège le plus proche. Percentile national.
+  - `score_education` = 0.9 × score_qualité + 0.1 × score_proximité
+  - `min_dist_college_km` : distance au collège le plus proche (stocké en DB, exporté en donnees_brutes).
+  - Couvre ~100% des communes (vs ~11% avant — avant : uniquement communes avec leur propre collège).
 - `score_sante` : APL DREES 2023 (consultations/an/hab médecins généralistes — aire de chalandise, pas densité communale). `apl_medecins` stocké en DB.
 - `poi_detail` : JSON — détail équipements par commune (Sirene + FINESS + Annuaire Édu + RES + OSM). Affiché dans la fiche commune. Ne contribue pas au score.
 - `score_revenus` : SUPPRIMÉ du score global (biais ségrégant — Saclay 97/100 = riche, pas accessible). Données taux_pauvrete/revenu_median stockées en DB pour info uniquement.
 - `score_transports` : Composite 50% distance gare SNCF + 50% densité arrêts TC (bus/métro/tram/RER via transport.data.gouv.fr). nb_arrets_tc stocké en DB.
-- `score_environnement` : Taux d'espaces non-artificialisés (data.gouv.fr CEREMA 2021). Percentile direct.
+- `score_environnement` : Composite 50% artificialisation + 50% qualité air.
+  - Artificialisation : taux d'espaces non-artificialisés CEREMA (data.gouv.fr). Stocké aussi en `taux_espaces_nat`.
+  - Qualité air : indice ATMO moyen annuel (Atmo France, WFS public). `score_qualite_air`, `qualite_air_moy`, `qualite_air_nb_jours` stockés en DB.
+  - Si commune sans données qualité air (37% des communes, surtout rurales) : score environnement = artificialisation seule.
+  - Mise à jour : relancer `import_environnement` puis `import_qualite_air` (ordre important — qualite_air recalcule le composite).
 - `score_demographie` : Évolution population 2016→2021 (Populations légales INSEE). Percentile direct.
 - `score_risques` : PPR naturels approuvés GASPAR — composite inondation(35%)+séisme(30%)+MVT(20%)+forêt(10%)+avalanche(5%). Percentile inversé.
 

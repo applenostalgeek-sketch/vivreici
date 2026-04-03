@@ -7,8 +7,10 @@ Stratégie :
 - Téléchargement des 101 fichiers CSV.gz départementaux (≈1MB chacun)
 - Filtrage sur Appartement + Maison avec surface > 9m²
 - Calcul du prix/m² par transaction → médiane par commune
+- Fallback : communes sans données → médiane départementale
+  - Alsace-Moselle (57/67/68) + Mayotte (976) : moyenne des départements limitrophes
 - Scoring par percentile national inverse (moins cher = meilleur score)
-- Upsert uniquement score_immobilier + prix_m2_median
+- Upsert uniquement score_immobilier + prix_m2_median + prix_m2_estime
 - Recalcul score_global + lettre pour toutes les communes
 """
 
@@ -235,12 +237,145 @@ def fusionner_arrondissements(agg: pd.DataFrame, df_transactions: pd.DataFrame) 
     return agg
 
 
+# ── Fallback KNN spatial ──────────────────────────────────────────────────────
+
+from scipy.spatial import cKDTree
+
+
+def _pop_band(pop: int) -> int:
+    """Tranche de population pour le KNN stratifié."""
+    if pop < 500:    return 0
+    if pop < 2000:   return 1
+    if pop < 10000:  return 2
+    if pop < 50000:  return 3
+    return 4  # 50k+
+
+
+async def appliquer_fallback_knn(session, df_dvf: pd.DataFrame) -> pd.DataFrame:
+    """
+    Pour les communes sans données DVF, estime le prix au m² par KNN spatial
+    stratifié par tranche de population.
+
+    Méthode : pour chaque commune manquante, on cherche les K communes DVF
+    les plus proches DANS LA MÊME TRANCHE DE POPULATION, pondérées par 1/d².
+
+    Tranches : <500, 500-2k, 2k-10k, 10k-50k, 50k+
+
+    Avantages :
+    - Strasbourg (50k+) → comparée à Nancy, Dijon, Reims, pas à des villages
+    - Village <500 → comparé aux villages voisins, pas aux villes
+    - Traverse naturellement les frontières départementales (Alsace-Moselle)
+    """
+    print(f"\n── Fallback KNN spatial (stratifié par pop) ──")
+
+    BAND_LABELS = ["<500", "500-2k", "2k-10k", "10k-50k", "50k+"]
+    EARTH_R = 6371.0
+    K = 10
+
+    # 1. Charger GPS + population de toutes les communes
+    result = await session.execute(
+        text("""
+            SELECT c.code_insee, c.latitude, c.longitude, c.population
+            FROM communes c
+            WHERE c.latitude IS NOT NULL AND c.longitude IS NOT NULL
+        """)
+    )
+    all_communes = {r[0]: {"lat": r[1], "lng": r[2], "pop": r[3] or 0} for r in result.fetchall()}
+
+    # 2. Construire un KDTree par tranche de population (DVF réels seulement)
+    dvf_codes = set(df_dvf["code_insee"])
+    dvf_prix = dict(zip(df_dvf["code_insee"], df_dvf["prix_m2_median"]))
+
+    trees = {}  # band -> (tree, codes, prix_array)
+    for band in range(5):
+        codes = []
+        coords = []
+        prix = []
+        for code, p in dvf_prix.items():
+            if code in all_communes:
+                c = all_communes[code]
+                if _pop_band(c["pop"]) == band:
+                    codes.append(code)
+                    coords.append([np.radians(c["lat"]), np.radians(c["lng"])])
+                    prix.append(p)
+        if coords:
+            trees[band] = (cKDTree(np.array(coords) * EARTH_R), codes, np.array(prix))
+            print(f"  → Band {BAND_LABELS[band]}: {len(codes)} communes DVF")
+
+    # 3. Communes sans DVF → estimer par KNN dans la même tranche
+    result = await session.execute(
+        text("SELECT code_insee FROM scores WHERE score_immobilier IS NULL OR score_immobilier < 0")
+    )
+    codes_sans_immo = {r[0] for r in result.fetchall()}
+    communes_sans = [c for c in all_communes if c not in dvf_codes and c in codes_sans_immo]
+
+    print(f"  → {len(communes_sans)} communes à estimer")
+
+    rows_fallback = []
+    nb_no_tree = 0
+
+    for code in communes_sans:
+        c = all_communes[code]
+        band = _pop_band(c["pop"])
+        coord = np.array([np.radians(c["lat"]), np.radians(c["lng"])]) * EARTH_R
+
+        if band not in trees:
+            nb_no_tree += 1
+            continue
+
+        tree, t_codes, t_prix = trees[band]
+        k = min(K, len(t_codes))
+        dists, idxs = tree.query(coord, k=k)
+
+        # Uniformiser en listes si k=1
+        if np.isscalar(dists):
+            dists = [dists]
+            idxs = [idxs]
+
+        weights = []
+        prix_v = []
+        for d, idx in zip(dists, idxs):
+            if idx >= len(t_prix):
+                continue
+            dist_km = max(d, 0.5)
+            w = 1.0 / (dist_km ** 2)
+            weights.append(w)
+            prix_v.append(t_prix[idx])
+
+        if not weights:
+            continue
+
+        prix_estime = np.average(prix_v, weights=np.array(weights))
+        rows_fallback.append({
+            "code_insee": code,
+            "prix_m2_median": round(prix_estime, 2),
+            "nb_transactions": 0,
+            "est_estime": True,
+        })
+
+    print(f"  → {len(rows_fallback)} communes estimées par KNN")
+    if nb_no_tree > 0:
+        print(f"  → {nb_no_tree} communes sans arbre pour leur tranche (ignorées)")
+
+    # 4. Fusionner DVF réels + fallback
+    df_dvf = df_dvf.copy()
+    df_dvf["est_estime"] = False
+    if rows_fallback:
+        df_fallback = pd.DataFrame(rows_fallback)
+        df_combined = pd.concat([df_dvf, df_fallback], ignore_index=True)
+    else:
+        df_combined = df_dvf
+
+    return df_combined
+
+
 # ── Scoring par percentile ─────────────────────────────────────────────────────
 
 def calculer_scores_immobilier(df_prix: pd.DataFrame) -> pd.DataFrame:
     """
     Score immobilier = percentile inversé (moins cher = score plus élevé).
     0 = le plus cher nationalement, 100 = le moins cher.
+    Le percentile est calculé sur TOUTES les communes (DVF réels + fallback).
     """
     prix_serie = df_prix["prix_m2_median"]
 
@@ -265,7 +400,12 @@ async def recalculer_scores_globaux(session, df_immo: pd.DataFrame) -> int:
     # Upsert immobilier en batch
     print("Upsert score_immobilier + prix_m2_median...")
     immo_dict = {
-        row["code_insee"]: (row["score_immobilier"], row["prix_m2_median"])
+        row["code_insee"]: (
+            row["score_immobilier"],
+            row["prix_m2_median"],
+            int(row.get("nb_transactions", 0)),
+            bool(row.get("est_estime", False)),
+        )
         for _, row in df_immo.iterrows()
     }
 
@@ -275,15 +415,16 @@ async def recalculer_scores_globaux(session, df_immo: pd.DataFrame) -> int:
 
     for i in range(0, len(items), batch_size):
         batch = items[i : i + batch_size]
-        for code_insee, (score, prix) in batch:
+        for code_insee, (score, prix, nb_tx, estime) in batch:
             await session.execute(
                 text("""
                     UPDATE scores
                     SET score_immobilier = :score,
-                        prix_m2_median   = :prix
+                        prix_m2_median   = :prix,
+                        prix_m2_estime   = :estime
                     WHERE code_insee = :code
                 """),
-                {"score": score, "prix": prix, "code": code_insee},
+                {"score": score, "prix": prix, "estime": 1 if estime else 0, "code": code_insee},
             )
         await session.commit()
         count_update += len(batch)
@@ -294,19 +435,14 @@ async def recalculer_scores_globaux(session, df_immo: pd.DataFrame) -> int:
 
     # Recalcul score_global pour toutes les communes
     print("Recalcul score_global pour toutes les communes...")
-    result = await session.execute(
-        text("""
-            SELECT code_insee,
-                   score_equipements, score_securite, score_immobilier,
-                   score_education, score_sante, score_environnement,
-                   score_demographie
-            FROM scores
-        """)
-    )
-    rows = result.fetchall()
-
     cats = list(CATEGORIES.keys())
     cat_cols = [f"score_{cat}" for cat in cats]
+    cols_sql = ", ".join(cat_cols)
+
+    result = await session.execute(
+        text(f"SELECT code_insee, {cols_sql} FROM scores")
+    )
+    rows = result.fetchall()
 
     count_global = 0
     for i in range(0, len(rows), batch_size):
@@ -315,7 +451,7 @@ async def recalculer_scores_globaux(session, df_immo: pd.DataFrame) -> int:
             code_insee = row[0]
             sous_scores = {}
             for j, cat in enumerate(cats):
-                val = row[j + 1]  # +1 car row[0] = code_insee
+                val = row[j + 1]
                 if val is not None:
                     sous_scores[cat] = float(val)
 
@@ -401,21 +537,38 @@ async def afficher_exemples(session):
 async def run():
     await init_db()
 
+    # Ajouter colonne prix_m2_estime si absente
+    async with async_session() as session:
+        try:
+            await session.execute(text("ALTER TABLE scores ADD COLUMN prix_m2_estime INTEGER DEFAULT 0"))
+            await session.commit()
+            print("  → Colonne prix_m2_estime ajoutée")
+        except Exception:
+            pass
+
     # 1. Télécharger tous les fichiers DVF
     df_raw = await telecharger_tous_departements()
 
     # 2. Calculer le prix médian au m² par commune
     df_prix = calculer_prix_median_par_commune(df_raw)
 
-    # 3. Calculer le score immobilier (percentile inversé)
-    df_scored = calculer_scores_immobilier(df_prix)
+    # 3. Fallback KNN spatial pour les communes sans données DVF
+    async with async_session() as session:
+        df_combined = await appliquer_fallback_knn(session, df_prix)
 
-    # 4. Upsert en base + recalcul score_global
+    nb_reel = len(df_prix)
+    nb_total = len(df_combined)
+    print(f"\n  → {nb_reel} communes DVF réel + {nb_total - nb_reel} estimés = {nb_total} total")
+
+    # 4. Calculer le score immobilier (percentile inversé sur l'ensemble)
+    df_scored = calculer_scores_immobilier(df_combined)
+
+    # 5. Upsert en base + recalcul score_global
     async with async_session() as session:
         nb = await recalculer_scores_globaux(session, df_scored)
         await afficher_exemples(session)
 
-    print(f"\nImport DVF terminé — {nb} communes scorées.")
+    print(f"\nImport DVF terminé — {nb} communes scorées ({nb_total - nb_reel} estimés).")
 
 
 if __name__ == "__main__":

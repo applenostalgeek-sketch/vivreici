@@ -90,11 +90,22 @@ def calculer_scores_batch(df_communes: pd.DataFrame) -> pd.DataFrame:
     """
     df = df_communes.copy()
 
-    # Score équipements (si disponible)
-    if "equipements_pour_1000" in df.columns:
+    # Score équipements — basé sur le score de présence (pas de division par population)
+    # Présence capée à 1 par type → aucun biais taille de commune
+    # 0 point de présence → score 0 directement (commune sans aucun service scoré)
+    if "presence_score" in df.columns:
+        serie_nz = df["presence_score"][df["presence_score"] > 0]
+        def _score_eq(x):
+            if pd.isna(x) or x <= 0:
+                return 0.0
+            return percentile_to_score(x, serie_nz, "direct")
+        df["score_equipements"] = df["presence_score"].apply(_score_eq)
+    elif "equipements_pour_1000" in df.columns:
+        # Fallback legacy (ne devrait plus être appelé)
         serie = df["equipements_pour_1000"].dropna()
+        serie_nz = serie[serie > 0]
         df["score_equipements"] = df["equipements_pour_1000"].apply(
-            lambda x: percentile_to_score(x, serie, "direct")
+            lambda x: 0.0 if pd.isna(x) or x <= 0 else percentile_to_score(x, serie_nz, "direct")
         )
 
     # Score sécurité (si disponible)

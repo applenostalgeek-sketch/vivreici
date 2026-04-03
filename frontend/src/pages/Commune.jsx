@@ -184,6 +184,23 @@ export default function Commune() {
             const brutes = data.score.donnees_brutes || {}
 
             // ── Stat inline par catégorie ────────────────────────────────────
+            function airLabel(moy) {
+              if (moy == null || moy < 0) return null
+              if (moy < 1.5) return 'Bon'
+              if (moy < 2.5) return 'Moyen'
+              if (moy < 3.5) return 'Dégradé'
+              if (moy < 4.5) return 'Mauvais'
+              if (moy < 5.5) return 'Très mauvais'
+              return 'Extrêmement mauvais'
+            }
+            function airColor(moy) {
+              if (moy == null) return 'text-ink-light'
+              if (moy < 1.5) return 'text-score-A'
+              if (moy < 2.5) return 'text-score-B'
+              if (moy < 3.5) return 'text-score-C'
+              return 'text-score-D'
+            }
+
             function catStat(key, val) {
               if (key === 'securite' && brutes.taux_criminalite != null)
                 return `${brutes.taux_criminalite.toFixed(1)} délits / 1 000 hab`
@@ -205,6 +222,23 @@ export default function Commune() {
               if (key === 'demographie' && brutes.evolution_population_5ans != null && brutes.evolution_population_5ans !== 0) {
                 const evo = brutes.evolution_population_5ans
                 return `${evo > 0 ? '+' : ''}${evo.toFixed(1)} % sur 5 ans`
+              }
+              if (key === 'education' && brutes.min_dist_college_km > 0) {
+                const dist = brutes.min_dist_college_km
+                return dist < 1 ? 'Collège < 1 km' : `Collège le + proche : ${dist.toFixed(1)} km`
+              }
+              if (key === 'environnement') {
+                const parts = []
+                if (brutes.taux_espaces_nat != null && brutes.taux_espaces_nat >= 0)
+                  parts.push(`${Math.round(brutes.taux_espaces_nat)}% espaces nat.`)
+                if (brutes.qualite_air_moy != null && brutes.qualite_air_moy >= 0)
+                  return (
+                    <span>
+                      {parts.length > 0 && <>{parts[0]} · </>}
+                      Air : <span className={airColor(brutes.qualite_air_moy)}>{airLabel(brutes.qualite_air_moy)}</span>
+                    </span>
+                  )
+                return parts.length > 0 ? parts.join(' · ') : null
               }
               if (key === 'risques')
                 return brutes.risques_detail ? null : 'Aucun PPR'
@@ -255,6 +289,7 @@ export default function Commune() {
               ]},
               { label: 'Sports', keys: [
                 { key: 'piscine', label: 'Piscine' }, { key: 'gymnase', label: 'Gymnase' }, { key: 'stade', label: 'Stade' },
+                { key: 'terrain_football', label: 'Terrain foot' }, { key: 'salle_sport', label: 'Salle de sport' },
               ]},
               { label: 'Culture', keys: [
                 { key: 'cinéma', label: 'Cinéma' }, { key: 'bibliothèque', label: 'Bibliothèque' },
@@ -306,91 +341,155 @@ export default function Commune() {
                   )}
                 </div>
 
-                {/* ── Contexte (données non scorées) ── */}
-                {(brutes.revenu_median > 0 || brutes.taux_pauvrete > 0) && (
-                  <div className="grid grid-cols-3 divide-x divide-border bg-white rounded-2xl border border-border overflow-hidden">
-                    {brutes.revenu_median > 0 && (
-                      <div className="px-5 py-4">
-                        <div className="font-mono text-lg font-semibold text-ink">
-                          {Math.round(brutes.revenu_median).toLocaleString('fr-FR')} €
-                        </div>
-                        <div className="text-xs text-ink-muted mt-0.5">revenu médian / an</div>
-                      </div>
-                    )}
-                    {brutes.prix_m2_median > 0 && brutes.revenu_median > 0 && (
-                      <div className="px-5 py-4">
-                        <div className="font-mono text-lg font-semibold text-ink">
-                          {(brutes.prix_m2_median * 80 / brutes.revenu_median).toFixed(1)} ans
-                        </div>
-                        <div className="text-xs text-ink-muted mt-0.5">pour acheter 80 m²</div>
-                      </div>
-                    )}
-                    {brutes.taux_pauvrete > 0 && (
-                      <div className="px-5 py-4">
-                        <div className="font-mono text-lg font-semibold text-ink">
-                          {brutes.taux_pauvrete.toFixed(1)} %
-                        </div>
-                        <div className="text-xs text-ink-muted mt-0.5">taux de pauvreté</div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* ── Détails ── */}
+                {(() => {
+                  // Pill component (présence)
+                  const Pill = ({ label, accent }) => (
+                    <span className={`text-xs px-2.5 py-1 rounded-full border ${accent || 'bg-paper text-ink-light border-border'}`}>
+                      {label}
+                    </span>
+                  )
+                  // Stat component (chiffre)
+                  const Stat = ({ label, value, sub }) => value != null && (
+                    <div className="px-4 py-3">
+                      <div className="font-mono text-lg font-semibold text-ink">{value}</div>
+                      <div className="text-xs text-ink-muted mt-0.5">{label}</div>
+                      {sub && <div className="text-xs text-ink-light mt-0.5">{sub}</div>}
+                    </div>
+                  )
+                  // Pill row (label + pills)
+                  const PillRow = ({ label, items }) => items.length > 0 && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xs text-ink-muted w-20 flex-shrink-0 pt-0.5">{label}</span>
+                      <div className="flex flex-wrap gap-1.5">{items}</div>
+                    </div>
+                  )
 
-                {/* ── Sur place ── */}
-                {hasSurPlace && (
-                  <div className="bg-white rounded-2xl border border-border p-6">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-4">Sur place</p>
-                    <div className="space-y-3">
+                  // Données présence depuis poi_detail
+                  const commercesPills = [
+                    ['Boulangerie', poi.boulangerie], ['Supermarché', poi.supermarché],
+                    ['Boucherie', poi.boucherie],
+                  ].filter(([,v]) => v > 0).map(([l]) => <Pill key={l} label={l} />)
 
-                      {(gareLabel || transportTags.length > 0) && (
-                        <div className="flex items-start gap-3">
-                          <span className="text-xs text-ink-muted w-20 flex-shrink-0 pt-0.5">Transports</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {gareLabel && (
-                              <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-full">
-                                🚉 {gareLabel}
-                              </span>
-                            )}
-                            {transportTags.map(m => (
-                              <span key={m.label} className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-full">
-                                {m.icon} {m.label}
-                              </span>
-                            ))}
+                  const santePills = [
+                    ['Pharmacie', poi.pharmacie], ['Cabinet médical', poi.cabinet_médical],
+                    ['Hôpital', poi.hôpital], ['Clinique', poi.clinique],
+                    ['Laboratoire', poi.labo_analyse],
+                  ].filter(([,v]) => v > 0).map(([l]) => <Pill key={l} label={l} />)
+
+                  const educPills = [
+                    ['Maternelle', poi.école_maternelle], ['Primaire', poi.école_primaire],
+                    ['Collège', poi.collège], ['Lycée', poi.lycée],
+                    ['Lycée pro', poi.lycée_professionnel],
+                  ].filter(([,v]) => v > 0).map(([l]) => <Pill key={l} label={l} />)
+
+                  const sportsPills = [
+                    ['Piscine', poi.piscine], ['Gymnase', poi.gymnase],
+                    ['Stade', poi.stade], ['Terrain foot', poi.terrain_football],
+                  ].filter(([,v]) => v > 0).map(([l]) => <Pill key={l} label={l} />)
+
+                  const culturePills = [
+                    ['Cinéma', poi.cinéma], ['Bibliothèque', poi.bibliothèque],
+                    ['Théâtre', poi.théâtre], ['Musée', poi.musée],
+                  ].filter(([,v]) => v > 0).map(([l]) => <Pill key={l} label={l} />)
+
+                  // Transport pills (gare + TC)
+                  const tPills = []
+                  if (gareLabel) tPills.push(<Pill key="gare" label={`🚉 ${gareLabel}`} accent="bg-blue-50 text-blue-800 border-blue-200" />)
+                  transportTags.forEach(m => tPills.push(<Pill key={m.label} label={`${m.icon} ${m.label}`} accent="bg-blue-50 text-blue-800 border-blue-200" />))
+
+                  // Risques pills
+                  const riskPills = riskTags.length > 0
+                    ? riskTags.map(r => <Pill key={r.label} label={`${r.icon} ${r.label}`} accent="bg-amber-50 text-amber-800 border-amber-200" />)
+                    : [<Pill key="none" label="✓ Aucun PPR" accent="bg-green-50 text-green-800 border-green-200" />]
+
+                  // Stats chiffrées
+                  const prixVal = brutes.prix_m2_median > 0 ? `${Math.round(brutes.prix_m2_median).toLocaleString('fr-FR')} €` : null
+                  let prixSub = null
+                  if (brutes.prix_m2_median > 0 && brutes.prix_m2_median_2022 > 0) {
+                    const pct = Math.round((brutes.prix_m2_median - brutes.prix_m2_median_2022) / brutes.prix_m2_median_2022 * 100)
+                    prixSub = `${pct > 0 ? '+' : ''}${pct}% depuis 2022`
+                  }
+                  if (brutes.prix_m2_estime) prixSub = [prixSub, 'estimation KNN'].filter(Boolean).join(' · ')
+
+                  const hasPillContent = commercesPills.length || santePills.length || educPills.length || sportsPills.length || culturePills.length || tPills.length
+
+                  return (
+                    <div className="bg-white rounded-2xl border border-border overflow-hidden">
+                      <div className="px-5 py-3 border-b border-border bg-paper">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Détails</p>
+                      </div>
+
+                      {/* ── Stats chiffrées ── */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-b border-border">
+                        <Stat label="prix / m²" value={prixVal} sub={prixSub} />
+                        {brutes.taux_criminalite != null && (
+                          <Stat label="délits / 1 000 hab" value={`${brutes.taux_criminalite.toFixed(1)}`} />
+                        )}
+                        {brutes.apl_medecins > 0 && (
+                          <Stat label="consult. méd. / an / hab" value={brutes.apl_medecins.toFixed(1)} />
+                        )}
+                        {brutes.evolution_population_5ans != null && brutes.evolution_population_5ans !== 0 && (
+                          <Stat label="population sur 5 ans" value={`${brutes.evolution_population_5ans > 0 ? '+' : ''}${brutes.evolution_population_5ans.toFixed(1)} %`} />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-b border-border">
+                        {brutes.taux_espaces_nat != null && brutes.taux_espaces_nat >= 0 && (
+                          <Stat label="espaces naturels" value={`${Math.round(brutes.taux_espaces_nat)} %`} />
+                        )}
+                        {brutes.qualite_air_moy != null && brutes.qualite_air_moy >= 0 && (
+                          <Stat label="qualité de l'air" value={<span className={airColor(brutes.qualite_air_moy)}>{airLabel(brutes.qualite_air_moy)}</span>} sub={`ATMO ${brutes.qualite_air_moy.toFixed(1)} / 6`} />
+                        )}
+                        {brutes.revenu_median > 0 && (
+                          <Stat label="revenu médian / an" value={`${Math.round(brutes.revenu_median).toLocaleString('fr-FR')} €`} />
+                        )}
+                        {brutes.taux_pauvrete > 0 && (
+                          <Stat label="taux de pauvreté" value={`${brutes.taux_pauvrete.toFixed(1)} %`} />
+                        )}
+                      </div>
+
+                      {/* ── Présence (pills par section) ── */}
+                      {(commercesPills.length > 0 || santePills.length > 0 || educPills.length > 0) && (
+                        <div className="px-5 pt-4 pb-3 border-b border-border">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-3">Vie quotidienne</p>
+                          <div className="space-y-3">
+                            <PillRow label="Commerces" items={commercesPills} />
+                            <PillRow label="Santé" items={santePills} />
+                            <PillRow label="Éducation" items={educPills} />
                           </div>
                         </div>
                       )}
 
-                      {poiActifs.map(g => (
-                        <div key={g.label} className="flex items-start gap-3">
-                          <span className="text-xs text-ink-muted w-20 flex-shrink-0 pt-0.5">{g.label}</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {g.present.map(label => (
-                              <span key={label} className="text-xs bg-paper text-ink-light border border-border px-2.5 py-1 rounded-full">
-                                {label}
-                              </span>
-                            ))}
+                      {tPills.length > 0 && (
+                        <div className="px-5 pt-4 pb-3 border-b border-border">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-3">Logement & accès</p>
+                          <div className="space-y-3">
+                            <PillRow label="Transports" items={tPills} />
                           </div>
                         </div>
-                      ))}
+                      )}
 
-                      <div className="flex items-start gap-3">
-                        <span className="text-xs text-ink-muted w-20 flex-shrink-0 pt-0.5">Risques</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {riskTags.length > 0 ? riskTags.map(m => (
-                            <span key={m.label} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full">
-                              {m.icon} {m.label}
-                            </span>
-                          )) : (
-                            <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-800 border border-green-200 px-2.5 py-1 rounded-full">
-                              ✓ Aucun PPR naturel approuvé
-                            </span>
-                          )}
+                      <div className="px-5 pt-4 pb-3 border-b border-border">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-3">Cadre de vie</p>
+                        <div className="space-y-3">
+                          <PillRow label="Risques" items={riskPills} />
                         </div>
                       </div>
 
+                      {(sportsPills.length > 0 || culturePills.length > 0) && (
+                        <div className="px-5 pt-4 pb-3">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-3">Sports & culture</p>
+                          <div className="space-y-3">
+                            <PillRow label="Sports" items={sportsPills} />
+                            <PillRow label="Culture" items={culturePills} />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
+
+                {/* Ancien bloc "Sur place" supprimé — intégré dans Détails ci-dessus */}
 
               </div>
             )
