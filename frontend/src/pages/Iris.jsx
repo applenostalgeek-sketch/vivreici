@@ -265,7 +265,7 @@ export default function Iris() {
                   <span className="text-xs font-semibold text-ink-light w-16 sm:w-24 flex-shrink-0">{meta.label}</span>
                   <div className="flex-1 h-7 bg-border rounded-lg overflow-hidden relative">
                     <div className="h-full rounded-lg" style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: color, backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.18) 100%)' }} />
-                    <span className="absolute inset-y-0 flex items-center font-display text-xs font-bold leading-none" style={{ left: pct >= 12 ? `${Math.max(pct, 2) - 1}%` : `${Math.max(pct, 2) + 1}%`, transform: pct >= 12 ? 'translateX(-100%)' : 'none', color: pct >= 12 ? 'white' : color }}>{pct}</span>
+                    <span className="absolute inset-y-0 flex items-center font-display text-xs font-bold leading-none text-white" style={{ left: pct >= 12 ? `${Math.max(pct, 2) - 1}%` : `${Math.max(pct, 2) + 1}%`, transform: pct >= 12 ? 'translateX(-100%)' : 'none' }}>{pct}</span>
                   </div>
                 </div>
               )
