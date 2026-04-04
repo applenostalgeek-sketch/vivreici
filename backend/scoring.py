@@ -4,6 +4,7 @@ Méthode : percentile national → sous-score 0-100 → score global pondéré �
 """
 
 from typing import Optional
+import numpy as np
 import pandas as pd
 
 
@@ -90,23 +91,42 @@ def calculer_scores_batch(df_communes: pd.DataFrame) -> pd.DataFrame:
     """
     df = df_communes.copy()
 
-    # Score équipements — basé sur le score de présence (pas de division par population)
-    # Présence capée à 1 par type → aucun biais taille de commune
-    # 0 point de présence → score 0 directement (commune sans aucun service scoré)
+    # Score équipements — hybride présence + densité pondéré par population
+    # Petites communes (< ~10k) : dominé par la présence (variété des services)
+    # Grandes communes (> ~30k) : dominé par la densité (services par habitant)
+    # Transition douce via alpha(pop) = 1 / (1 + (pop/K)^P)
+    HYBRID_K = 20000   # point d'inflexion (alpha=0.5 à 20k hab)
+    HYBRID_P = 1.5     # pente de la transition
+
     if "presence_score" in df.columns:
+        # 1. Percentile de présence (parmi communes avec présence > 0)
         serie_nz = df["presence_score"][df["presence_score"] > 0]
-        def _score_eq(x):
-            if pd.isna(x) or x <= 0:
-                return 0.0
-            return percentile_to_score(x, serie_nz, "direct")
-        df["score_equipements"] = df["presence_score"].apply(_score_eq)
-    elif "equipements_pour_1000" in df.columns:
-        # Fallback legacy (ne devrait plus être appelé)
-        serie = df["equipements_pour_1000"].dropna()
-        serie_nz = serie[serie > 0]
-        df["score_equipements"] = df["equipements_pour_1000"].apply(
+        df["_pres_pctile"] = df["presence_score"].apply(
             lambda x: 0.0 if pd.isna(x) or x <= 0 else percentile_to_score(x, serie_nz, "direct")
         )
+
+        # 2. Densité pondérée pour 10 000 hab (si weighted_count disponible)
+        if "weighted_count" in df.columns and "population" in df.columns:
+            df["_density_10k"] = df["weighted_count"] / df["population"].clip(lower=1) * 10000
+            dens_nz = df["_density_10k"][df["_density_10k"] > 0]
+            df["_dens_pctile"] = df["_density_10k"].apply(
+                lambda x: 0.0 if pd.isna(x) or x <= 0 else percentile_to_score(x, dens_nz, "direct")
+            )
+
+            # 3. Alpha de transition (1 = 100% présence, 0 = 100% densité)
+            df["_alpha"] = df["population"].apply(
+                lambda p: 1.0 / (1.0 + (max(p, 1) / HYBRID_K) ** HYBRID_P) if p > 0 else 1.0
+            )
+
+            # 4. Score hybride
+            df["score_equipements"] = df["_alpha"] * df["_pres_pctile"] + (1 - df["_alpha"]) * df["_dens_pctile"]
+
+            # Nettoyage colonnes temporaires
+            df.drop(columns=["_pres_pctile", "_dens_pctile", "_density_10k", "_alpha"], inplace=True)
+        else:
+            # Fallback : présence seule (pas de weighted_count)
+            df["score_equipements"] = df["_pres_pctile"]
+            df.drop(columns=["_pres_pctile"], inplace=True)
 
     # Score sécurité (si disponible)
     if "taux_criminalite" in df.columns:

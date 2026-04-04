@@ -187,6 +187,11 @@ def aggreger_par_commune(df: pd.DataFrame) -> pd.DataFrame:
         pivot[code].clip(upper=1) * poids for code, poids in cols_presence
     )
 
+    # Comptage pondéré (count × poids, sans cap) — utilisé pour la densité dans le score hybride
+    pivot["weighted_count"] = sum(
+        pivot[code] * poids for code, poids in cols_presence
+    )
+
     # Construire le JSON de détail par type (seulement les types présents)
     label_map = {k: v for k, v in EQUIPEMENTS_SELECTIONNES.items() if k in pivot.columns}
     def build_detail(row):
@@ -194,9 +199,9 @@ def aggreger_par_commune(df: pd.DataFrame) -> pd.DataFrame:
         return json.dumps(d, ensure_ascii=False) if d else None
     pivot["equipements_detail"] = pivot.apply(build_detail, axis=1)
 
-    return pivot[["code_insee", "nb_equipements_total", "presence_score", "nb_essentiels",
-                  "nb_medecins", "nb_pharmacies", "nb_sports_loisirs", "nb_transports",
-                  "nb_alimentaire", "equipements_detail"]]
+    return pivot[["code_insee", "nb_equipements_total", "presence_score", "weighted_count",
+                  "nb_essentiels", "nb_medecins", "nb_pharmacies", "nb_sports_loisirs",
+                  "nb_transports", "nb_alimentaire", "equipements_detail"]]
 
 
 async def run():
@@ -222,8 +227,8 @@ async def run():
     df = df_all.merge(df_equip, on="code_insee", how="left")
     df["population"] = df["population"].fillna(0).astype(int)
     # Remplir les colonnes équipements à 0 pour les communes sans données BPE
-    int_cols = ["nb_equipements_total", "presence_score", "nb_essentiels", "nb_medecins",
-                "nb_pharmacies", "nb_sports_loisirs", "nb_transports", "nb_alimentaire"]
+    int_cols = ["nb_equipements_total", "presence_score", "weighted_count", "nb_essentiels",
+                "nb_medecins", "nb_pharmacies", "nb_sports_loisirs", "nb_transports", "nb_alimentaire"]
     for col in int_cols:
         if col in df.columns:
             df[col] = df[col].fillna(0).astype(int)

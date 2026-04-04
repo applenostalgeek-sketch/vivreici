@@ -10,7 +10,7 @@ const LETTRES = [
 ]
 
 const CATEGORIES = [
-  { icon: '🏪', nom: 'Équipements',      poids: 20, detail: 'Score de présence — variété des services (pharmacie, supermarché, boulangerie…), pas de densité. Avoir 50 pharmacies = avoir 1.',  src: 'BPE 2024 INSEE' },
+  { icon: '🏪', nom: 'Équipements',      poids: 20, detail: 'Score hybride présence + densité. Petites communes : variété des services (avoir une pharmacie compte, pas d\'en avoir 50). Grandes communes : densité pondérée pour 10 000 hab. Transition douce autour de 20 000 hab.',  src: 'BPE 2024 INSEE' },
   { icon: '🚆', nom: 'Transports',       poids: 18, detail: 'Composite 50 % distance gare SNCF + 50 % densité arrêts TC (bus, métro, tram, RER).',    src: 'SNCF · transport.data.gouv.fr' },
   { icon: '🏥', nom: 'Santé',            poids: 18, detail: 'Consultations accessibles par habitant et par an (APL médecins généralistes, aire de chalandise).',  src: 'APL 2023 DREES' },
   { icon: '🔒', nom: 'Sécurité',         poids: 14, detail: 'Taux de criminalité — score inversé (moins = mieux).',                                   src: 'SSMSI 2024' },

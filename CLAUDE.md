@@ -75,11 +75,17 @@ Depuis `/Users/admin/vivreici/` :
 - `iris_scores` : 6 sous-scores IRIS (equipements, sante, immobilier — locaux + securite, transports, education — injectés depuis commune), score_global, lettre
 
 ### Scores (0-100, percentile national)
-- `score_equipements` : BPE 2024 — **score de présence** (pas de division par population).
-  - Méthode : pour chaque type de service, `min(count, 1) × poids` → somme = `presence_score`. Percentile national parmi communes avec presence_score > 0. Communes à 0 → score 0.
+- `score_equipements` : BPE 2024 — **score hybride présence + densité**, pondéré par population.
+  - **Présence** : `min(count, 1) × poids` → somme = `presence_score`. Mesure la variété des services (avoir 50 pharmacies = avoir 1).
+  - **Densité** : `sum(count × poids)` = `weighted_count` → densité pour 10 000 hab. Mesure la capacité réelle.
+  - **Score hybride** : `alpha × percentile_présence + (1-alpha) × percentile_densité` où `alpha = 1/(1+(pop/K)^P)`, K=20000, P=1.5.
+    - Village 500 hab : α≈1.0 → quasi 100% présence (variété des services).
+    - Ville 20k hab : α=0.5 → 50/50.
+    - Grande ville 100k+ : α≈0.04 → quasi 100% densité (services par habitant).
+  - **Pourquoi** : la présence seule saturait à 26/26 pour toutes les communes >10k hab → Paris scorait 95+. Le score hybride différencie les grandes villes entre elles par la densité, tout en protégeant les petites communes du biais densité.
   - Poids : pharmacie(4), supermarché(4), hypermarché(4), boulangerie(2), poste(2), hôpital(2), urgences(2), boucherie(1), gymnase(1), piscine(1), cinéma(1), bibliothèque(1), théâtre(1). Score max théorique : 26 pts.
   - Exclu du score : médecins (→ score_sante), mairie (partout), écoles (→ score_education), terrain_football (trop répandu), gare (→ score_transports).
-  - **Logique clé** : avoir 50 pharmacies = avoir 1 pharmacie. On mesure la variété des services présents, pas leur densité. Élimine le biais petites communes.
+  - Script de recalcul sans re-télécharger BPE : `python3 -m scripts.recalc_equipements_hybride`
 - `score_sante` : BPE 2024 (médecins pour 10000 hab)
 - `score_securite` : SSMSI 2024 (taux criminalité, sens inverse)
 - `score_immobilier` : DVF 2024 (prix m² médian, sens inverse — moins cher = score plus élevé).
