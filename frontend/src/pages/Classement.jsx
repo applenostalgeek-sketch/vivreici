@@ -109,7 +109,7 @@ export default function Classement() {
                 <button
                   key={opt.value}
                   onClick={() => setMinPop(opt.value)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                  className={`px-3 py-2 sm:py-1.5 rounded-lg text-sm font-medium border transition-all ${
                     minPop === opt.value
                       ? 'bg-ink text-white border-ink'
                       : 'border-border text-ink-light hover:border-ink hover:text-ink'
@@ -133,7 +133,7 @@ export default function Classement() {
                   <button
                     key={key}
                     onClick={() => toggleCat(key)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-sm font-medium border transition-all ${
                       active
                         ? 'bg-ink text-white border-ink'
                         : 'border-border text-ink-light hover:border-ink hover:text-ink'

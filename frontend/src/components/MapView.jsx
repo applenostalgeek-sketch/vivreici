@@ -480,7 +480,7 @@ export default function MapView({
     <div className={`relative ${className}`}>
       <div ref={mapRef} className="w-full h-full" />
 
-      <div className="absolute bottom-4 left-3 z-[1000] bg-white/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-lg">
+      <div className="absolute bottom-4 left-3 z-[1000] bg-white/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-lg max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto">
         <div className="flex items-center justify-between gap-3 mb-2">
           <p className="text-xs font-semibold text-ink uppercase tracking-wider">{modeLabel}</p>
           {profileLabel && (

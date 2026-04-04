@@ -14,7 +14,7 @@ export default function Carte() {
           <SearchBar size="sm" placeholder="Commune ou adresse…" />
         </div>
         <ProfileDropdown />
-        <Link to="/classement" className="hidden lg:flex-shrink-0 text-sm text-ink-light hover:text-ink transition-colors">
+        <Link to="/classement" className="hidden sm:block flex-shrink-0 text-sm text-ink-light hover:text-ink transition-colors">
           Classement →
         </Link>
       </nav>

@@ -18,12 +18,12 @@ export default function Nav({ searchBar = true, searchPlaceholder = 'Commune ou 
       </Link>
 
       {searchBar && (
-        <div className="w-64 hidden md:block">
+        <div className="w-64 hidden sm:block">
           <SearchBar size="sm" placeholder={searchPlaceholder} />
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <ProfileDropdown />
         {children ?? (
           <a href="/carte" className="text-sm font-medium text-ink-light hover:text-ink transition-colors">Carte</a>
