@@ -50,7 +50,7 @@ export default function Home() {
           <span className="font-display text-xl tracking-tight text-paper">
             <span className="font-light">le</span><span className="font-extrabold text-score-A">bon</span><span className="font-light">quartier</span>
           </span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <ProfileDropdown dark />
             <a href="/carte" className="text-sm font-medium text-paper/50 hover:text-paper/90 transition-colors">
               Carte
@@ -69,7 +69,7 @@ export default function Home() {
 
           {/* H1 */}
           <h1
-            className="font-display text-5xl md:text-7xl lg:text-8xl text-paper text-center leading-[1.05] mb-6 animate-fade-up max-w-3xl"
+            className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-paper text-center leading-[1.05] mb-6 animate-fade-up max-w-3xl"
             style={{ animationDelay: '60ms', opacity: 0, animationFillMode: 'forwards' }}
           >
             Tu cherches<br />
@@ -80,7 +80,7 @@ export default function Home() {
             className="text-paper/50 text-base md:text-lg text-center max-w-sm mb-12 animate-fade-up"
             style={{ animationDelay: '140ms', opacity: 0, animationFillMode: 'forwards' }}
           >
-            On classe les meilleures communes selon 8 critères objectifs.
+            On classe les meilleures communes selon 9 critères objectifs.
           </p>
 
           {/* SearchBar */}
@@ -129,7 +129,7 @@ export default function Home() {
             {[
               { value: stats.nb_scorees.toLocaleString('fr-FR'), label: 'communes scorées' },
               { value: stats.nb_iris ? `${Math.round(stats.nb_iris / 1000)} 000+` : '48 000+', label: 'quartiers analysés' },
-              { value: '8', label: 'critères objectifs' },
+              { value: '9', label: 'critères objectifs' },
               { value: '100 %', label: 'open data public' },
             ].map(({ value, label }) => (
               <div key={label}>

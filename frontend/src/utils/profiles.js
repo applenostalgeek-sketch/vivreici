@@ -10,7 +10,7 @@ export const PROFILES = {
     weights: {
       equipements: 0.20, transports: 0.18, sante: 0.18,
       securite: 0.14, immobilier: 0.14, education: 0.08,
-      environnement: 0.08, demographie: 0.04, risques: 0.01,
+      environnement: 0.08, demographie: 0.04, risques: 0.09,
     },
   },
   famille: {

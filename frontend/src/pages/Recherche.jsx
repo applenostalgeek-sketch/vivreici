@@ -152,8 +152,8 @@ export default function Recherche() {
       const rank = prix.filter(x => x < p).length / prix.length
       const scoreImmoLocal = Math.round((1 - rank) * 100)
       const sousCopy = { ...r.score.sous_scores, immobilier: scoreImmoLocal }
-      const cats = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports']
-      const weights_def = { equipements: 0.20, sante: 0.18, transports: 0.18, securite: 0.14, immobilier: 0.14, education: 0.08 }
+      const cats = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'demographie', 'risques']
+      const weights_def = { equipements: 0.20, sante: 0.18, transports: 0.18, securite: 0.14, immobilier: 0.14, education: 0.08, environnement: 0.08, demographie: 0.04, risques: 0.09 }
       let wsum = 0, vsum = 0
       for (const cat of cats) {
         const v = sousCopy[cat]
@@ -213,7 +213,7 @@ export default function Recherche() {
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-score-A text-sm">✓</span>
               )}
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg z-50 overflow-hidden max-h-[60vh] overflow-y-auto">
                   {suggestions.map(feat => (
                     <button
                       key={feat.properties.id}
