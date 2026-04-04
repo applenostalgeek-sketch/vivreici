@@ -24,7 +24,7 @@ Depuis `/Users/admin/vivreici/` :
 2. `python -m backend.data_import.import_geo_fallback`→ communes manquantes (GeoJSON)
 3. `python -m backend.data_import.import_coords`      → coordonnées GPS
 4. `python -m backend.data_import.import_bpe`         → équipements + santé (BPE 2024 INSEE, ~5min)
-5. `python -m backend.data_import.import_securite`    → criminalité (SSMSI 2024)
+5. `python -m backend.data_import.import_securite`    → criminalité (SSMSI 2025)
 6. `python -m backend.data_import.import_education`   → IPS collèges + DNB + lycées pro
 7. `python -m backend.data_import.import_dvf`         → immobilier (DVF 2024, ~3min)
 8. `python -m backend.data_import.import_filosofi`    → revenus/pauvreté (Filosofi 2021)
@@ -87,7 +87,11 @@ Depuis `/Users/admin/vivreici/` :
   - Exclu du score : médecins (→ score_sante), mairie (partout), écoles (→ score_education), terrain_football (trop répandu), gare (→ score_transports).
   - Script de recalcul sans re-télécharger BPE : `python3 -m scripts.recalc_equipements_hybride`
 - `score_sante` : BPE 2024 (médecins pour 10000 hab)
-- `score_securite` : SSMSI 2024 (taux criminalité, sens inverse)
+- `score_securite` : SSMSI 2025 (taux criminalité pour mille, sens inverse — moins de crimes = mieux).
+  - **6 catégories** : cambriolages, violences physiques (intra+hors famille), vols sans violence, vols violents sans arme, vols avec armes.
+  - **Secret statistique** : communes avec ≤5 faits sur 3 ans consécutifs → `ndiff` (non diffusé). Le fichier SSMSI fournit `complement_info_taux` = moyenne départementale des communes ndiff. Utilisé comme estimation.
+  - **Avant fix (avr. 2026)** : ndiff traité comme 0 → 82% des communes scoraient 100 (distribution binaire). Corrigé : 4.2% à 99.5+, distribution uniforme.
+  - Percentile national inversé (somme des 6 taux).
 - `score_immobilier` : DVF 2024 (prix m² médian, sens inverse — moins cher = score plus élevé).
   - **Source primaire** : DVF (Demandes de Valeurs Foncières) — transactions réelles, 24 298 communes (~69%).
   - **Fallback KNN spatial** : pour les 11 079 communes sans DVF (dont Alsace-Moselle 67/68/57 = livre foncier local, pas de DVF).
