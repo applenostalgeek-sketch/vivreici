@@ -96,7 +96,7 @@ export default function Iris() {
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                className={`px-3 py-2 sm:px-4 rounded-lg text-sm font-medium transition-all ${
                   tab === t ? 'bg-white shadow-sm text-ink' : 'text-ink-light hover:text-ink'
                 }`}
               >
@@ -113,7 +113,7 @@ export default function Iris() {
                   Imprimer
                 </button>
               </div>
-              <div className="rounded-2xl overflow-hidden border border-border" style={{ height: '70vh' }}>
+              <div className="rounded-2xl overflow-hidden border border-border h-[50vh] sm:h-[70vh]">
                 <MapView
                   initialCenter={markerLat && markerLng ? [markerLat, markerLng] : [data.latitude, data.longitude]}
                   initialZoom={15}
@@ -145,7 +145,7 @@ export default function Iris() {
           {data.rang_commune > 0 && data.nb_iris_commune > 0 && (
             <div className="flex items-center gap-3 mb-8 bg-paper border border-border rounded-xl px-5 py-3">
               <div className="text-center flex-shrink-0">
-                <div className="font-mono text-2xl font-bold text-ink">#{data.rang_commune}</div>
+                <div className="font-mono text-xl sm:text-2xl font-bold text-ink">#{data.rang_commune}</div>
                 <div className="text-xs text-ink-light">sur {data.nb_iris_commune}</div>
               </div>
               <div className="w-px h-8 bg-border flex-shrink-0" />
@@ -168,7 +168,7 @@ export default function Iris() {
           )}
 
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 sm:gap-8 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-mono bg-paper border border-border rounded px-2 py-0.5 text-ink-light">IRIS</span>
@@ -176,7 +176,7 @@ export default function Iris() {
                   <span className="text-xs text-ink-light">{TYP_IRIS_LABEL[data.typ_iris] || data.typ_iris}</span>
                 )}
               </div>
-              <h1 className="font-display text-4xl md:text-5xl text-ink mb-2">{data.nom}</h1>
+              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl text-ink mb-2">{data.nom}</h1>
               <div className="flex flex-wrap items-center gap-3 text-ink-light">
 {data.population > 0 && (
                   <span className="font-medium text-ink">{data.population.toLocaleString('fr-FR')} hab.</span>
@@ -262,11 +262,10 @@ export default function Iris() {
               return (
                 <div className="flex items-center gap-3">
                   <span className="text-sm w-5 flex-shrink-0 text-center">{meta.icon}</span>
-                  <span className="text-xs font-semibold text-ink-light w-24 flex-shrink-0">{meta.label}</span>
-                  <div className="flex-1 h-7 bg-border rounded-lg overflow-hidden">
-                    <div className="h-full rounded-lg flex items-center justify-end pr-2" style={{ width: `${pct}%`, backgroundColor: color, backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.18) 100%)' }}>
-                      <span className="font-display text-white text-xs font-bold leading-none">{pct}</span>
-                    </div>
+                  <span className="text-xs font-semibold text-ink-light w-16 sm:w-24 flex-shrink-0">{meta.label}</span>
+                  <div className="flex-1 h-7 bg-border rounded-lg overflow-hidden relative">
+                    <div className="h-full rounded-lg" style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: color, backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.18) 100%)' }} />
+                    <span className={`absolute inset-y-0 flex items-center font-display text-xs font-bold leading-none ${pct >= 12 ? 'text-white' : 'text-ink'}`} style={{ left: pct >= 12 ? `${Math.max(pct, 2) - 1}%` : `${Math.max(pct, 2) + 1}%`, transform: pct >= 12 ? 'translateX(-100%)' : 'none' }}>{pct}</span>
                   </div>
                 </div>
               )
@@ -333,15 +332,15 @@ export default function Iris() {
                     </span>
                   )
                   const Stat = ({ label, value, sub }) => value != null && (
-                    <div className="px-4 py-3">
-                      <div className="font-mono text-lg font-semibold text-ink">{value}</div>
+                    <div className="px-3 py-2 sm:px-4 sm:py-3">
+                      <div className="font-mono text-base sm:text-lg font-semibold text-ink">{value}</div>
                       <div className="text-xs text-ink-muted mt-0.5">{label}</div>
                       {sub && <div className="text-xs text-ink-light mt-0.5">{sub}</div>}
                     </div>
                   )
                   const PillRow = ({ label, items }) => items.length > 0 && (
                     <div className="flex items-start gap-3">
-                      <span className="text-xs text-ink-muted w-20 flex-shrink-0 pt-0.5">{label}</span>
+                      <span className="text-xs text-ink-muted w-14 sm:w-20 flex-shrink-0 pt-0.5">{label}</span>
                       <div className="flex flex-wrap gap-1.5">{items}</div>
                     </div>
                   )
