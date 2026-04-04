@@ -27,6 +27,7 @@ Depuis `/Users/admin/vivreici/` :
 5. `python -m backend.data_import.import_securite`    → criminalité (SSMSI 2025)
 6. `python -m backend.data_import.import_education`   → IPS collèges + DNB + lycées pro
 7. `python -m backend.data_import.import_dvf`         → immobilier (DVF 2024, ~3min)
+7b. `python3 -m backend.data_import.import_notaires_alsace` → prix notaires Alsace-Moselle 67/68/57 (après DVF)
 8. `python -m backend.data_import.import_filosofi`    → revenus/pauvreté (Filosofi 2021)
 9. `python3 -m backend.data_import.import_transports`  → score transports (gares SNCF, ~1min)
 10. `python3 -m backend.data_import.import_demographie` → évolution population 2016→2021
@@ -94,12 +95,18 @@ Depuis `/Users/admin/vivreici/` :
   - Percentile national inversé (somme des 6 taux).
 - `score_immobilier` : DVF 2024 (prix m² médian, sens inverse — moins cher = score plus élevé).
   - **Source primaire** : DVF (Demandes de Valeurs Foncières) — transactions réelles, 24 298 communes (~69%).
-  - **Fallback KNN spatial** : pour les 11 079 communes sans DVF (dont Alsace-Moselle 67/68/57 = livre foncier local, pas de DVF).
+  - **Alsace-Moselle (67/68/57)** : pas de DVF (livre foncier local). Source alternative = **API notaires** (immobilier.notaires.fr).
+    - Endpoint `/pub-services/immodecret-stat1/v1/prix` — prix médians par commune, données notariales réelles.
+    - ~94 communes avec données directes (appart + maison, moyenne pondérée par nb transactions).
+    - Communes rurales sans données notaires : KNN local basé sur les communes notaires du même département (max 50 km, 8 voisins, 1/d²).
+    - Script : `python3 -m backend.data_import.import_notaires_alsace` (à lancer APRÈS import_dvf).
+    - **Avant fix (avr. 2026)** : KNN depuis départements voisins → résultats aberrants (Mulhouse estimé 3 057 €/m² vs 1 317 € réel).
+  - **Fallback KNN spatial** : pour les autres communes sans DVF (hors Alsace-Moselle).
     - Méthode : KDTree par tranche de population (<500, 500-2k, 2k-10k, 10k-50k, 50k+). Pour chaque commune manquante, moyenne pondérée (1/d²) des 10 communes DVF les plus proches dans la même tranche.
     - Pourquoi stratifié : évite qu'un village rural copie le prix d'une ville voisine (et inversement).
-    - `prix_m2_estime = 1` en DB pour identifier les estimations (vs données DVF réelles).
-    - Couverture finale : 99.9% (35 377 communes).
-  - Percentile calculé sur l'ensemble (DVF + estimés).
+  - `prix_m2_estime = 1` en DB pour identifier les estimations (vs données DVF/notaires réelles).
+  - Couverture finale : 99.9% (35 377 communes).
+  - Percentile calculé sur l'ensemble (DVF + notaires + estimés).
   - `MIN_TRANSACTIONS = 5` : communes DVF avec < 5 transactions exclues (médiane non fiable).
 - `score_education` : Score APL-style sur rayon 30km. Pour chaque commune, agrège tous les établissements dans un rayon de 30km pondérés par 1/distance (distance min clampée à 1km pour éviter div/0).
   - **Qualité (90%)** : composite IPS collèges 2024-2025 (40%) + DNB brevet 2021 (40%) + lycées pro (20%). Percentile national.
