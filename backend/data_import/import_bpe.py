@@ -29,56 +29,58 @@ from backend.scoring import calculer_scores_batch, normaliser_par_habitant, calc
 # URL du fichier BPE 2024 (ensemble des équipements)
 BPE_URL = "https://www.insee.fr/fr/statistiques/fichier/8217525/BPE24.zip"
 
-# Codes d'équipements sélectionnés (nomenclature BPE)
-# Source : https://www.insee.fr/fr/metadonnees/source/fichier/bpe_nomenclatures_2023.pdf
+# Codes d'équipements sélectionnés (nomenclature BPE 2024)
+# Source : https://www.insee.fr/fr/information/8221498
+# ATTENTION : les codes ont été entièrement refondus entre BPE 2023 et BPE 2024.
 EQUIPEMENTS_SELECTIONNES = {
     # Commerces alimentaires
-    "B101": "supermarché",
-    "B102": "hypermarché",
-    "B201": "boulangerie",
-    "B203": "boucherie",
+    "B105": "supermarché",        # ex-B101
+    "B104": "hypermarché",        # ex-B102
+    "B207": "boulangerie",        # ex-B201
+    "B204": "boucherie",          # ex-B203
 
     # Santé
-    "D101": "médecin_généraliste",
-    "D102": "médecin_spécialiste",
-    "D231": "pharmacie",
-    "D303": "hôpital",
-    "D307": "urgences",
+    "D265": "médecin_généraliste",  # ex-D101
+    "D307": "pharmacie",            # ex-D231 (ATTENTION : D307 = urgences en BPE 2023)
+    "D101": "hôpital",              # ex-D303 (ATTENTION : D101 = médecin gén. en BPE 2023)
+    "D106": "urgences",             # ex-D307
 
     # Services publics
-    "A101": "mairie",
-    "A116": "bureau_poste",
-    "A304": "agence_bancaire",
+    "A129": "mairie",             # ex-A101
+    "A206": "bureau_poste",       # ex-A116
+    "A203": "agence_bancaire",    # ex-A304
 
     # Éducation
-    "C101": "école_maternelle",
-    "C104": "école_élémentaire",
-    "C201": "collège",
-    "C301": "lycée",
-    "C302": "lycée_professionnel",
+    "C107": "école_maternelle",   # ex-C101
+    "C109": "école_élémentaire",  # ex-C104
+    "C201": "collège",            # inchangé
+    "C301": "lycée",              # inchangé
+    "C302": "lycée_professionnel",  # inchangé
 
     # Sports
-    "F101": "gymnase",
-    "F102": "terrain_football",
-    "F111": "piscine",
-    "F302": "salle_sport",
+    "F121": "gymnase",            # ex-F101
+    "F113": "terrain_football",   # ex-F102 (terrains de grands jeux)
+    "F101": "piscine",            # ex-F111 (ATTENTION : F101 = gymnase en BPE 2023)
+    "F120": "salle_sport",        # ex-F302
 
     # Culture et loisirs
-    "F201": "cinéma",
-    "F303": "bibliothèque",
-    "F310": "théâtre",
+    "F303": "cinéma",             # ex-F201 (ATTENTION : F303 = bibliothèque en BPE 2023)
+    "F307": "bibliothèque",       # ex-F303
+    "F315": "théâtre",            # ex-F310 (arts du spectacle)
 
     # Transports
-    "H102": "gare_voyageurs",
+    "E107": "gare_nationale",     # ex-H102 (gares grandes lignes)
+    "E108": "gare_régionale",     # ex-H102 (gares TER)
+    "E109": "gare_locale",        # ex-H102 (gares de proximité)
 }
 
-# Codes médecins pour calcul densité médicale
-CODES_MEDECINS = {"D101", "D102"}
-CODES_PHARMACIES = {"D231"}
-CODES_SERVICES_PUBLICS = {"A101", "A116", "A304"}
-CODES_SPORTS_LOISIRS = {"F101", "F102", "F111", "F302", "F201", "F303", "F310"}
-CODES_TRANSPORTS = {"H102"}
-CODES_ALIMENTAIRE = {"B101", "B102", "B201", "B203"}
+# Codes médecins pour calcul densité médicale (BPE 2024)
+CODES_MEDECINS = {"D265"}  # médecin_généraliste uniquement (spécialistes = D251-D276, trop éclatés)
+CODES_PHARMACIES = {"D307"}
+CODES_SERVICES_PUBLICS = {"A129", "A206", "A203"}
+CODES_SPORTS_LOISIRS = {"F121", "F113", "F101", "F120", "F303", "F307", "F315"}
+CODES_TRANSPORTS = {"E107", "E108", "E109"}
+CODES_ALIMENTAIRE = {"B105", "B104", "B207", "B204"}
 
 # Score de présence : poids si le type est PRÉSENT dans la commune.
 # Règle : min(count, 1) × poids — avoir 50 pharmacies vaut autant qu'en avoir 1.
@@ -86,39 +88,40 @@ CODES_ALIMENTAIRE = {"B101", "B102", "B201", "B203"}
 # 0 = exclu (doublon avec un autre score, présent partout, ou peu discriminant)
 POIDS_PRESENCE = {
     # Alimentation quotidienne
-    "B101": 4,   # supermarché
-    "B102": 4,   # hypermarché (distinct du supermarché — avoir les deux est un bonus légitime)
-    "B201": 2,   # boulangerie
-    "B203": 1,   # boucherie
+    "B105": 4,   # supermarché
+    "B104": 4,   # hypermarché (distinct du supermarché — avoir les deux est un bonus légitime)
+    "B207": 2,   # boulangerie
+    "B204": 1,   # boucherie
 
     # Santé — médecins exclus (→ score_sante APL)
-    "D101": 0,   # médecin_généraliste → score_sante
-    "D102": 0,   # médecin_spécialiste → score_sante
-    "D231": 4,   # pharmacie — essentielle
-    "D303": 2,   # hôpital
-    "D307": 2,   # urgences
+    "D265": 0,   # médecin_généraliste → score_sante
+    "D307": 4,   # pharmacie — essentielle
+    "D101": 2,   # hôpital (soins courte durée)
+    "D106": 2,   # urgences
 
     # Services publics
-    "A101": 0,   # mairie — présente partout, ne différencie pas
-    "A116": 2,   # bureau de poste
-    "A304": 0,   # agence bancaire — données BPE peu fiables
+    "A129": 0,   # mairie — présente partout, ne différencie pas
+    "A206": 2,   # bureau de poste
+    "A203": 0,   # agence bancaire — données BPE peu fiables
 
     # Éducation — exclu (score_education séparé)
-    "C101": 0, "C104": 0, "C201": 0, "C301": 0, "C302": 0,
+    "C107": 0, "C109": 0, "C201": 0, "C301": 0, "C302": 0,
 
-    # Sports — inclus à poids faible (plus de biais avec la présence capée à 1)
-    "F101": 1,   # gymnase
-    "F102": 0,   # terrain_football — trop répandu, ne discrimine pas
-    "F111": 1,   # piscine
-    "F302": 0,   # salle_sport (regroupé avec gymnase dans la pratique)
+    # Sports — inclus à poids faible
+    "F121": 1,   # gymnase
+    "F113": 0,   # terrain_football — trop répandu, ne discrimine pas
+    "F101": 1,   # piscine
+    "F120": 0,   # salle_sport (regroupé avec gymnase dans la pratique)
 
     # Culture
-    "F201": 1,   # cinéma
-    "F303": 1,   # bibliothèque / médiathèque
-    "F310": 1,   # théâtre
+    "F303": 1,   # cinéma
+    "F307": 1,   # bibliothèque / médiathèque
+    "F315": 1,   # théâtre / arts du spectacle
 
     # Transports — exclu (→ score_transports séparé)
-    "H102": 0,   # gare_voyageurs
+    "E107": 0,   # gare nationale
+    "E108": 0,   # gare régionale
+    "E109": 0,   # gare locale
 }
 # Score max théorique : 4+4+2+1+4+2+2+2+1+1+1+1+1 = 26 pts (commune avec tout)
 
