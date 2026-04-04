@@ -10,15 +10,15 @@ const LETTRES = [
 ]
 
 const CATEGORIES = [
-  { icon: '🏪', nom: 'Équipements',      poids: 20, detail: 'Score hybride présence + densité. Petites communes : variété des services (avoir une pharmacie compte, pas d\'en avoir 50). Grandes communes : densité pondérée pour 10 000 hab. Transition douce autour de 20 000 hab.',  src: 'BPE 2024 INSEE' },
-  { icon: '🚆', nom: 'Transports',       poids: 18, detail: 'Composite 50 % distance gare SNCF + 50 % densité arrêts TC (bus, métro, tram, RER).',    src: 'SNCF · transport.data.gouv.fr' },
-  { icon: '🏥', nom: 'Santé',            poids: 18, detail: 'Consultations accessibles par habitant et par an (APL médecins généralistes, aire de chalandise).',  src: 'APL 2023 DREES' },
-  { icon: '🔒', nom: 'Sécurité',         poids: 14, detail: 'Taux de criminalité — score inversé (moins = mieux).',                                   src: 'SSMSI 2024' },
-  { icon: '🏡', nom: 'Immobilier',       poids: 14, detail: 'Prix au m² médian — score inversé (moins cher = mieux). Communes sans DVF : estimation spatiale KNN (voisines de même taille).',  src: 'DVF 2024 DGFiP' },
-  { icon: '⚠️', nom: 'Risques naturels', poids:  9, detail: 'PPR approuvés — inondation (35 %), séisme (30 %), mouvement de terrain (20 %), feux de forêt (10 %), avalanche (5 %).',  src: 'GASPAR Géorisques' },
-  { icon: '🎓', nom: 'Éducation',        poids:  8, detail: 'Qualité (90 %) : IPS collèges + DNB + lycées pro, agrégés sur 30 km. Proximité (10 %) : distance au collège le plus proche.',  src: 'DEPP 2021-2025' },
-  { icon: '🌿', nom: 'Environnement',    poids:  8, detail: 'Composite 50 % artificialisation (espaces naturels CEREMA) + 50 % qualité de l\'air (indice ATMO moyen annuel).',  src: 'CEREMA 2023 · Atmo France' },
-  { icon: '📈', nom: 'Démographie',      poids:  4, detail: 'Évolution de la population sur 5 ans (2016 → 2021).',                                    src: 'Populations légales INSEE' },
+  { icon: '🏪', nom: 'Équipements', poids: 20, detail: 'Score hybride présence + densité, pondéré par la taille de la commune. Petites communes (< 20 000 hab) : on mesure la variété des services présents — avoir une pharmacie compte, pas d\'en avoir 50. Grandes communes (> 20 000 hab) : on mesure la densité pondérée d\'équipements pour 10 000 habitants. Transition douce entre les deux régimes. 13 types comptent dans le score : pharmacie, supermarché, hypermarché (poids fort), boulangerie, poste, hôpital, urgences (poids moyen), boucherie, gymnase, piscine, cinéma, bibliothèque, théâtre (poids faible). Médecins, écoles et gares sont exclus car déjà couverts par leurs catégories respectives.', src: 'BPE 2024 INSEE' },
+  { icon: '🚆', nom: 'Transports', poids: 18, detail: 'Composite 50 % distance à la gare SNCF la plus proche (inversé — plus proche = mieux) + 50 % densité d\'arrêts de transport en commun (bus, métro, tram, RER) dans la commune. Les deux composantes sont converties en percentile national avant d\'être combinées.', src: 'SNCF · transport.data.gouv.fr' },
+  { icon: '🏥', nom: 'Santé', poids: 18, detail: 'Accessibilité Potentielle Localisée (APL) — nombre de consultations accessibles par habitant et par an chez un médecin généraliste. Méthode DREES : modèle gravitaire qui tient compte de l\'offre ET de la demande dans un rayon autour de chaque commune, pondéré par la distance. Ce n\'est pas un simple comptage de médecins : une commune proche d\'une grande ville bien dotée bénéficie de son offre.', src: 'APL 2023 DREES' },
+  { icon: '🔒', nom: 'Sécurité', poids: 14, detail: 'Taux de criminalité pour 1 000 habitants — score inversé (moins de faits = meilleur score). Données par département ou circonscription de sécurité publique, ventilées au niveau communal quand disponible.', src: 'SSMSI 2024' },
+  { icon: '🏡', nom: 'Immobilier', poids: 14, detail: 'Prix au m² médian des transactions réelles (appartements + maisons) — score inversé (moins cher = meilleur score). Seules les ventes avec un prix entre 200 et 20 000 €/m² et une surface >= 10 m² sont retenues. Minimum 5 transactions requises pour que la médiane soit fiable. Communes sans données DVF (Alsace-Moselle, petites communes rurales) : estimation par les 10 communes les plus proches dans la même tranche de population, pondérées par 1/distance². Quartiers IRIS : les transactions sont géolocalisées par GPS dans chaque quartier.', src: 'DVF 2024 DGFiP' },
+  { icon: '⚠️', nom: 'Risques naturels', poids: 9, detail: 'Plans de Prévention des Risques (PPR) approuvés — score inversé (moins de risques = mieux). Composite : inondation (35 %), séisme (30 %), mouvement de terrain (20 %), feux de forêt (10 %), avalanche (5 %). L\'absence de PPR ne signifie pas l\'absence de risque.', src: 'GASPAR Géorisques' },
+  { icon: '🎓', nom: 'Éducation', poids: 8, detail: 'Qualité (90 %) : composite IPS collèges (indice de position sociale, 40 %) + résultats au DNB brevet (40 %) + lycées professionnels (20 %), agrégés sur tous les établissements dans un rayon de 30 km pondérés par 1/distance. Proximité (10 %) : distance au collège le plus proche. Cette méthode couvre 100 % des communes, même celles sans établissement.', src: 'DEPP 2021-2025' },
+  { icon: '🌿', nom: 'Environnement', poids: 8, detail: 'Composite 50 % artificialisation des sols (taux d\'espaces naturels non artificialisés, CEREMA) + 50 % qualité de l\'air (indice ATMO moyen annuel sur 12 mois glissants). Communes sans données qualité de l\'air (37 %, surtout rurales) : score basé sur l\'artificialisation seule.', src: 'CEREMA 2023 · Atmo France' },
+  { icon: '📈', nom: 'Démographie', poids: 4, detail: 'Évolution de la population sur 5 ans (2016 → 2021). Une commune en croissance démographique obtient un meilleur score. Percentile national direct.', src: 'Populations légales INSEE' },
 ]
 
 const MAX_POIDS = 20
@@ -183,11 +183,13 @@ export default function Methode() {
             48 569 quartiers sont disponibles sur toute la France.
           </p>
           <p className="text-sm text-ink-light leading-relaxed mt-3">
-            Les quartiers sont scorés sur <strong className="text-ink">7 catégories</strong> :
-            équipements, santé et immobilier sont mesurés localement (BPE par IRIS, DVF par géolocalisation).
-            Sécurité, transports, éducation et risques naturels reprennent le score
-            de la commune parente (ces données ne sont pas disponibles à l'échelle du quartier).
-            Même méthodologie et mêmes poids que les communes — scores comparables.
+            Les quartiers sont scorés sur les <strong className="text-ink">9 mêmes catégories</strong> que les communes.
+            Trois catégories sont mesurées localement à l'échelle du quartier :
+            équipements (BPE par IRIS), santé (médecins par IRIS) et immobilier (transactions DVF géolocalisées par GPS dans chaque quartier).
+            Les six autres (sécurité, transports, éducation, environnement, démographie, risques naturels)
+            reprennent le score de la commune parente — ces données ne sont pas disponibles à l'échelle du quartier.
+            Si un quartier manque de données locales, il hérite du score de sa commune.
+            Mêmes poids que les communes — scores comparables.
           </p>
         </section>
 
