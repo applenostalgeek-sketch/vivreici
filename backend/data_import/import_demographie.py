@@ -88,7 +88,7 @@ def _df_vers_pop(df: pd.DataFrame, annee: int) -> pd.DataFrame:
         raise ValueError(f"Code commune introuvable. Colonnes : {list(df.columns)}")
 
     result["pop"] = pd.to_numeric(df[col_pop], errors="coerce")
-    result = result[result["code_insee"].str.match(r"^\d{5}$")]
+    result = result[result["code_insee"].str.match(r"^(\d{5}|2[AB]\d{3})$")]
     result = result.dropna(subset=["pop"])
     result = result[result["pop"] > 0]
     result["pop"] = result["pop"].astype(int)
@@ -274,25 +274,27 @@ async def run():
         result = await session.execute(text("""
             SELECT code_insee,
                    score_equipements, score_securite, score_immobilier,
-                   score_education, score_sante, score_revenus,
-                   score_transports, score_demographie, score_environnement
+                   score_education, score_sante,
+                   score_transports, score_demographie, score_environnement,
+                   score_risques
             FROM scores
             WHERE score_equipements >= 0 OR score_securite >= 0
                OR score_immobilier >= 0 OR score_education >= 0
-               OR score_sante >= 0 OR score_revenus >= 0
+               OR score_sante >= 0
                OR score_transports >= 0 OR score_demographie >= 0
-               OR score_environnement >= 0
+               OR score_environnement >= 0 OR score_risques >= 0
         """))
         rows = result.fetchall()
         cols = ["code_insee", "score_equipements", "score_securite", "score_immobilier",
-                "score_education", "score_sante", "score_revenus",
-                "score_transports", "score_demographie", "score_environnement"]
+                "score_education", "score_sante",
+                "score_transports", "score_demographie", "score_environnement",
+                "score_risques"]
         cat_map = {
             "score_equipements": "equipements", "score_securite": "securite",
             "score_immobilier": "immobilier", "score_education": "education",
-            "score_sante": "sante", "score_revenus": "revenus",
+            "score_sante": "sante",
             "score_transports": "transports", "score_demographie": "demographie",
-            "score_environnement": "environnement",
+            "score_environnement": "environnement", "score_risques": "risques",
         }
         nb_recalc = 0
         for row in rows:
