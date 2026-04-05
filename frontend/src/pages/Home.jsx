@@ -1,9 +1,12 @@
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
 import MapView from '../components/MapView.jsx'
 import { usePageMeta } from '../hooks/usePageMeta.js'
 
 export default function Home() {
+  const mapRef = useRef(null)
+
   usePageMeta({
     title: null,
     description: 'Trouvez où il fait bon vivre en France. Score A à E pour 35 000 communes — équipements, sécurité, immobilier, santé, éducation, transports.',
@@ -14,11 +17,11 @@ export default function Home() {
 
       {/* ── MAP (fond) ───────────────────────────────────────────── */}
       <div className="absolute inset-0 z-0">
-        <MapView className="h-full w-full" />
+        <MapView ref={mapRef} className="h-full w-full" />
       </div>
 
       {/* ── HEADER — même Nav que les autres pages, en overlay ──── */}
-      <Nav overlay>
+      <Nav overlay onLogoClick={() => mapRef.current?.resetView()}>
         <Link to="/classement" className="text-sm font-medium text-ink-light hover:text-ink transition-colors">
           Classement
         </Link>

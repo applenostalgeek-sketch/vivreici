@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SCORE_COLORS, SCORE_LABELS, IRIS_ZOOM_THRESHOLD } from '../constants.js'
 import { loadCommunes, loadCommunesScores } from '../hooks/useSearch.js'
@@ -57,12 +57,12 @@ async function fetchAndBuild(L, url, bboxKeyRef, bboxKey, activeLettersRef, buil
   return layers
 }
 
-export default function MapView({
+const MapView = forwardRef(function MapView({
   initialCenter = [46.603354, 1.888334],
   initialZoom = 6,
   marker = null,
   className = 'h-full',
-}) {
+}, ref) {
   const mapRef               = useRef(null)
   const leafletMap           = useRef(null)
   const leafletRef           = useRef(null)
@@ -91,6 +91,14 @@ export default function MapView({
   const [polyMode, setPolyMode]             = useState(false)
   const [activeLetters, setActiveLetters]   = useState(new Set(['A', 'B', 'C', 'D', 'E']))
   const [legendOpen, setLegendOpen]         = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    resetView() {
+      if (leafletMap.current) {
+        leafletMap.current.flyTo(initialCenter, initialZoom, { duration: 0.8 })
+      }
+    }
+  }), [initialCenter, initialZoom])
 
   const toggleLetter = useCallback((letter) => {
     setActiveLetters(prev => {
@@ -535,4 +543,6 @@ export default function MapView({
       </div>
     </div>
   )
-}
+})
+
+export default MapView
