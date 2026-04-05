@@ -10,9 +10,13 @@ import ProfileDropdown from './ProfileDropdown.jsx'
  * - searchPlaceholder: texte placeholder de la SearchBar
  * - children        : liens custom à droite — si omis, affiche les liens standards
  */
-export default function Nav({ searchBar = true, searchPlaceholder = 'Commune ou adresse…', children }) {
+export default function Nav({ searchBar = true, searchPlaceholder = 'Commune ou adresse…', overlay = false, children }) {
   return (
-    <nav className="flex items-center justify-between px-6 py-4 border-b border-border bg-white/60 backdrop-blur-sm sticky top-0 z-40">
+    <nav className={`flex items-center justify-between px-6 py-4 border-b border-border backdrop-blur-sm ${
+      overlay
+        ? 'absolute top-0 left-0 right-0 z-[1001] bg-white/95'
+        : 'bg-white/60 sticky top-0 z-40'
+    }`}>
       <Link to="/" className="font-display text-xl tracking-tight text-ink">
         <span className="font-light">le</span><span className="font-extrabold text-score-A">bon</span><span className="font-light">quartier</span>
       </Link>
@@ -26,7 +30,7 @@ export default function Nav({ searchBar = true, searchPlaceholder = 'Commune ou 
       <div className="flex items-center gap-2 sm:gap-3">
         <ProfileDropdown />
         {children ?? (
-          <a href="/carte" className="text-sm font-medium text-ink-light hover:text-ink transition-colors">Carte</a>
+          <a href="/" className="text-sm font-medium text-ink-light hover:text-ink transition-colors">Carte</a>
         )}
       </div>
     </nav>

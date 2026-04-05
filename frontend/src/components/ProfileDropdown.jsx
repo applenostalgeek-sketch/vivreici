@@ -22,7 +22,8 @@ export default function ProfileDropdown({ dark = false }) {
     return () => document.removeEventListener('mousedown', onOutside)
   }, [])
 
-  const label = isCustom ? `${p.emoji} ${p.label}` : 'Score national'
+  const labelFull = isCustom ? `${p.emoji} ${p.label}` : 'Score national'
+  const labelShort = isCustom ? p.emoji : '🇫🇷'
 
   const btnClass = dark
     ? isCustom
@@ -38,7 +39,8 @@ export default function ProfileDropdown({ dark = false }) {
         onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${btnClass}`}
       >
-        <span>{label}</span>
+        <span className="hidden sm:inline">{labelFull}</span>
+        <span className="sm:hidden">{labelShort}</span>
         <svg
           className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''} ${dark ? 'opacity-40' : 'opacity-50'}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}

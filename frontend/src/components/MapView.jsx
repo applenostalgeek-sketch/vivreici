@@ -90,6 +90,7 @@ export default function MapView({
   const [irisMode, setIrisMode]             = useState(false)
   const [polyMode, setPolyMode]             = useState(false)
   const [activeLetters, setActiveLetters]   = useState(new Set(['A', 'B', 'C', 'D', 'E']))
+  const [legendOpen, setLegendOpen]         = useState(false)
 
   const toggleLetter = useCallback((letter) => {
     setActiveLetters(prev => {
@@ -480,7 +481,8 @@ export default function MapView({
     <div className={`relative ${className}`}>
       <div ref={mapRef} className="w-full h-full" />
 
-      <div className="absolute bottom-4 left-3 z-[1000] bg-white/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-lg max-w-[calc(100vw-2rem)] max-h-[50vh] overflow-y-auto">
+      {/* ── Légende desktop (inchangée) ── */}
+      <div className="hidden sm:block absolute bottom-4 left-3 z-[1000] bg-white/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-lg max-w-[calc(100vw-2rem)]">
         <div className="flex items-center justify-between gap-3 mb-2">
           <p className="text-xs font-semibold text-ink uppercase tracking-wider">{modeLabel}</p>
           {profileLabel && (
@@ -508,6 +510,28 @@ export default function MapView({
             {modeHint}
           </p>
         )}
+      </div>
+
+      {/* ── Légende mobile (barre horizontale A–E) ── */}
+      <div className="sm:hidden absolute top-[72px] left-1/2 -translate-x-1/2 z-[1000]">
+        <div className="flex items-center gap-0.5 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-border/50 p-1">
+          {Object.entries(SCORE_COLORS).map(([lettre, color]) => (
+            <button
+              key={lettre}
+              onClick={() => toggleLetter(lettre)}
+              className={`flex items-center justify-center w-10 h-8 rounded-full transition-all ${
+                activeLetters.has(lettre) ? 'opacity-100' : 'opacity-25'
+              }`}
+              style={{ backgroundColor: activeLetters.has(lettre) ? color + '20' : 'transparent' }}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              <span className="text-[10px] font-bold text-ink ml-1">{lettre}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
