@@ -61,7 +61,6 @@ export default function Home() {
 
   const closePanel = useCallback(() => {
     navigate('/')
-    mapRef.current?.resetView()
   }, [navigate])
 
   return (
