@@ -62,6 +62,7 @@ const MapView = forwardRef(function MapView({
   initialZoom = 6,
   marker = null,
   className = 'h-full',
+  onSelect = null,
 }, ref) {
   const mapRef               = useRef(null)
   const leafletMap           = useRef(null)
@@ -84,6 +85,9 @@ const MapView = forwardRef(function MapView({
   const scoresMapRef         = useRef(null)          // Map<code_insee, {sous_scores}>
   const deptProfileRef       = useRef(null)          // Map<dept, {score_median, lettre}> pour profil
 
+  const onSelectRef          = useRef(onSelect)
+  onSelectRef.current = onSelect
+
   const navigate             = useNavigate()
   const { profile }          = useProfile()
 
@@ -96,6 +100,11 @@ const MapView = forwardRef(function MapView({
     resetView() {
       if (leafletMap.current) {
         leafletMap.current.flyTo(initialCenter, initialZoom, { duration: 0.8 })
+      }
+    },
+    flyTo(lat, lng, zoom = 13) {
+      if (leafletMap.current) {
+        leafletMap.current.flyTo([lat, lng], zoom, { duration: 0.8 })
       }
     }
   }), [initialCenter, initialZoom])
@@ -332,7 +341,10 @@ const MapView = forwardRef(function MapView({
               if (!lettre) {
                 const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 0.8, opacity: 0.5, fillOpacity: 0.35 } })
                 layer.bindTooltip(`<strong>${p.nom}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
-                layer.on('click', () => navigate(`/commune/${p.code_insee}?tab=detail`))
+                layer.on('click', () => {
+                  if (onSelectRef.current) onSelectRef.current({ type: 'commune', code: p.code_insee })
+                  else navigate(`/commune/${p.code_insee}`)
+                })
                 layer.addTo(communePolyLayer)
                 continue
               }
@@ -340,7 +352,10 @@ const MapView = forwardRef(function MapView({
               const color = SCORE_COLORS[lettre] || '#9CA3AF'
               const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 0.8, opacity: 0.6, fillOpacity: 0.55 } })
               layer.bindTooltip(makeTooltip(p.nom, lettre, scoreGlobal, p.population), { sticky: true })
-              layer.on('click', () => navigate(`/commune/${p.code_insee}?tab=detail`))
+              layer.on('click', () => {
+                if (onSelectRef.current) onSelectRef.current({ type: 'commune', code: p.code_insee })
+                else navigate(`/commune/${p.code_insee}`)
+              })
               layer.addTo(communePolyLayer)
             }
           }
@@ -397,8 +412,12 @@ const MapView = forwardRef(function MapView({
               if (!lettre) {
                 const layer = L.geoJSON(feature.geometry, { style: { fillColor: '#CBD5E1', color: '#fff', weight: 1, opacity: 0.65, fillOpacity: 0.45 } })
                 layer.bindTooltip(`<strong>${z.nom}</strong><br/><span style="color:#888">Données insuffisantes</span>`, { sticky: true })
-                const dest = isZ ? `/commune/${z.code_iris.slice(0, 5)}?tab=detail` : `/iris/${z.code_iris}?tab=detail`
-                layer.on('click', () => navigate(dest))
+                const selType = isZ ? 'commune' : 'iris'
+                const selCode = isZ ? z.code_iris.slice(0, 5) : z.code_iris
+                layer.on('click', () => {
+                  if (onSelectRef.current) onSelectRef.current({ type: selType, code: selCode })
+                  else navigate(isZ ? `/commune/${selCode}` : `/iris/${selCode}`)
+                })
                 layer.addTo(irisLayer)
                 continue
               }
@@ -409,10 +428,12 @@ const MapView = forwardRef(function MapView({
               const tooltip = makeTooltip(z.nom, lettre, scoreGlobal, z.population || commune?.population) + (typeLabel ? `<br/><em>${typeLabel}</em>` : '')
               const layer = L.geoJSON(feature.geometry, { style: { fillColor: color, color: '#fff', weight: 1.2, opacity: 0.7, fillOpacity: 0.55 } })
               layer.bindTooltip(tooltip, { sticky: true })
-              const dest = isZ
-                ? `/commune/${z.code_iris.slice(0, 5)}?tab=detail`
-                : `/iris/${z.code_iris}?tab=detail`
-              layer.on('click', () => navigate(dest))
+              const selType2 = isZ ? 'commune' : 'iris'
+              const selCode2 = isZ ? z.code_iris.slice(0, 5) : z.code_iris
+              layer.on('click', () => {
+                if (onSelectRef.current) onSelectRef.current({ type: selType2, code: selCode2 })
+                else navigate(isZ ? `/commune/${selCode2}` : `/iris/${selCode2}`)
+              })
               layer.addTo(irisLayer)
             }
           }

@@ -1,18 +1,13 @@
 import { Link } from 'react-router-dom'
-import SearchBar from './SearchBar.jsx'
 import ProfileDropdown from './ProfileDropdown.jsx'
 
 /**
  * Barre de navigation commune à toutes les pages.
- *
- * Props :
- * - searchBar       : afficher la SearchBar (défaut: true)
- * - searchPlaceholder: texte placeholder de la SearchBar
- * - children        : liens custom à droite — si omis, affiche les liens standards
+ * Logo + profil uniquement — la recherche est dans la carte.
  */
-export default function Nav({ searchBar = true, searchPlaceholder = 'Commune ou adresse…', overlay = false, onLogoClick, children }) {
+export default function Nav({ overlay = false, onLogoClick }) {
   return (
-    <nav className={`flex items-center justify-between px-6 py-4 border-b border-border backdrop-blur-sm ${
+    <nav className={`flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border backdrop-blur-sm ${
       overlay
         ? 'absolute top-0 left-0 right-0 z-[1001] bg-white/95'
         : 'bg-white/60 sticky top-0 z-40'
@@ -21,18 +16,7 @@ export default function Nav({ searchBar = true, searchPlaceholder = 'Commune ou 
         <span className="font-light">le</span><span className="font-extrabold text-score-A">bon</span><span className="font-light">quartier</span>
       </Link>
 
-      {searchBar && (
-        <div className="w-64 hidden sm:block">
-          <SearchBar size="sm" placeholder={searchPlaceholder} />
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 sm:gap-3">
-        <ProfileDropdown />
-        {children ?? (
-          <a href="/" className="text-sm font-medium text-ink-light hover:text-ink transition-colors">Carte</a>
-        )}
-      </div>
+      <ProfileDropdown />
     </nav>
   )
 }

@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSearch, locateByCoords } from '../hooks/useSearch.js'
 
-export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une commune ou une adresse…', onSelect }) {
+export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une commune ou une adresse…', onSelect, dropUp = false }) {
   const { query, setQuery, results, loading } = useSearch()
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -30,6 +30,11 @@ export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une c
     setOpen(false)
     setLocating(true)
     inputRef.current?.blur()
+    if (onSelect) {
+      onSelect(adresse)
+      setLocating(false)
+      return
+    }
     try {
       const loc = await locateByCoords(adresse.lat, adresse.lng, adresse.code_insee)
       if (loc.code_iris) {
@@ -98,7 +103,9 @@ export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une c
       </div>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-border rounded-2xl shadow-xl z-50 overflow-hidden animate-scale-in">
+        <div className={`absolute left-0 right-0 bg-white border border-border rounded-2xl shadow-xl z-50 overflow-hidden animate-scale-in ${
+          dropUp ? 'bottom-full mb-2' : 'top-full mt-2'
+        }`}>
           {results.map((item, i) => (
             <button
               key={item._type === 'adresse' ? `addr-${i}` : item.code_insee}
