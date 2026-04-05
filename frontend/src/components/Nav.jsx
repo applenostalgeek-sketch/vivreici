@@ -17,7 +17,7 @@ export default function Nav({ searchBar = true, searchPlaceholder = 'Commune ou 
         ? 'absolute top-0 left-0 right-0 z-[1001] bg-white/95'
         : 'bg-white/60 sticky top-0 z-40'
     }`}>
-      <Link to="/" className="font-display text-xl tracking-tight text-ink">
+      <Link to="/" className="font-display text-xl tracking-tight text-ink -ml-2 px-2 py-1">
         <span className="font-light">le</span><span className="font-extrabold text-score-A">bon</span><span className="font-light">quartier</span>
       </Link>
 
