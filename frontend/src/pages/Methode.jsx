@@ -25,10 +25,10 @@ const MAX_POIDS = 20
 const PROFILES = [
   {
     emoji: '👪', label: 'Famille',
-    desc: 'Priorité à l\'école, à la sécurité et aux services du quotidien.',
+    desc: 'Priorité à l\'école, à la sécurité et au budget pour se loger.',
     top: [
-      { nom: 'Éducation',  poids: 27, icon: '🎓' },
-      { nom: 'Sécurité',   poids: 22, icon: '🔒' },
+      { nom: 'Éducation',  poids: 22, icon: '🎓' },
+      { nom: 'Sécurité',   poids: 20, icon: '🔒' },
       { nom: 'Équipements',poids: 18, icon: '🏪' },
     ],
   },
@@ -52,11 +52,11 @@ const PROFILES = [
   },
   {
     emoji: '☀️', label: 'Retraite',
-    desc: 'Accès aux soins, sécurité et cadre de vie agréable.',
+    desc: 'Accès aux soins, cadre de vie agréable, budget maîtrisé.',
     top: [
-      { nom: 'Santé',         poids: 32, icon: '🏥' },
-      { nom: 'Sécurité',      poids: 22, icon: '🔒' },
-      { nom: 'Environnement', poids: 16, icon: '🌿' },
+      { nom: 'Santé',         poids: 28, icon: '🏥' },
+      { nom: 'Sécurité',      poids: 18, icon: '🔒' },
+      { nom: 'Équipements',   poids: 14, icon: '🏪' },
     ],
   },
   {

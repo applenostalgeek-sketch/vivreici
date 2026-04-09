@@ -17,9 +17,9 @@ export const PROFILES = {
     label: 'Famille',
     emoji: '👪',
     weights: {
-      education: 0.27, securite: 0.22, equipements: 0.18,
-      sante: 0.14, transports: 0.10, immobilier: 0.06,
-      environnement: 0.02, risques: 0.01,
+      education: 0.22, securite: 0.20, equipements: 0.18,
+      immobilier: 0.14, sante: 0.12, transports: 0.10,
+      environnement: 0.03, risques: 0.01,
     },
   },
   jeune_actif: {
@@ -44,9 +44,9 @@ export const PROFILES = {
     label: 'Retraite',
     emoji: '☀️',
     weights: {
-      sante: 0.32, securite: 0.22, environnement: 0.16,
-      equipements: 0.14, transports: 0.08, immobilier: 0.06,
-      education: 0.01, risques: 0.01,
+      sante: 0.28, securite: 0.18, equipements: 0.14,
+      immobilier: 0.12, environnement: 0.12, transports: 0.08,
+      risques: 0.04, education: 0.04,
     },
   },
   budget: {
