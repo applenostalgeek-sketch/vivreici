@@ -394,7 +394,7 @@ export default function Recherche() {
       </main>
       <footer className="border-t border-border px-6 py-5 text-center text-xs text-ink-light">
         lebonquartier · open data français · 2026 ·{' '}
-        <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
+        <Link to="/a-propos" className="underline hover:text-ink">Méthode</Link>
       </footer>
     </div>
   )

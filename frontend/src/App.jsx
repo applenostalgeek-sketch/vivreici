@@ -13,7 +13,8 @@ export default function App() {
       <Route path="/iris/:codeIris" element={<Home />} />
       <Route path="/commune/:codeInsee/quartiers" element={<QuartiersCommune />} />
       <Route path="/classement" element={<Classement />} />
-      <Route path="/methode" element={<Methode />} />
+      <Route path="/methode" element={<Navigate to="/a-propos" replace />} />
+      <Route path="/a-propos" element={<Methode />} />
     </Routes>
   )
 }

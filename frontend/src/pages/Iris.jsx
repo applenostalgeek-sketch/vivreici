@@ -518,13 +518,13 @@ export default function Iris() {
               Les zones IRIS (INSEE) regroupent ~2 000 habitants chacune.
               Équipements, Santé et Prix au m² sont calculés à l'échelle du quartier.
               Sécurité, Transports et Éducation proviennent de la commune — même valeur pour tous ses quartiers.{' '}
-              <Link to="/methode" className="underline hover:text-ink">En savoir plus sur la méthode</Link>
+              <Link to="/a-propos" className="underline hover:text-ink">En savoir plus sur la méthode</Link>
             </p>
           </div>
         </main>
         <footer className="border-t border-border px-6 py-5 text-center text-xs text-ink-light">
           lebonquartier · open data français · 2026 ·{' '}
-          <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
+          <Link to="/a-propos" className="underline hover:text-ink">Méthode</Link>
         </footer>
         </>
       )}

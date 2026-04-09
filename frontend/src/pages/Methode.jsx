@@ -84,7 +84,7 @@ export default function Methode() {
 
       <main className="max-w-2xl mx-auto px-6 py-12">
 
-        <h1 className="font-display text-4xl text-ink mb-2">Méthode</h1>
+        <h1 className="font-display text-4xl text-ink mb-2">À propos</h1>
         <p className="text-ink-light mb-10">
           Comment le score est calculé, ce qu'il mesure, et ses limites.
         </p>
@@ -216,7 +216,7 @@ export default function Methode() {
 
       <footer className="border-t border-border px-6 py-5 text-center text-xs text-ink-light">
         lebonquartier · open data français · 2026 ·{' '}
-        <Link to="/methode" className="underline hover:text-ink">Méthode</Link>
+        <Link to="/a-propos" className="underline hover:text-ink">Méthode</Link>
       </footer>
     </div>
   )
