@@ -50,6 +50,37 @@ def percentile_to_score(valeur: float, serie: pd.Series, sens: str = "direct") -
     return percentile
 
 
+def score_immobilier_hybrid(prix: float, all_prix: np.ndarray) -> float:
+    """
+    Score immobilier hybride P85 : percentile inversé pour les prix <= P85,
+    log-linéaire pour les prix > P85 (étale les communes chères).
+
+    En dessous de P85 (~2 700 €/m²) : percentile classique mappé sur 20-100.
+    Au-dessus de P85 : log-linéaire mappé sur 0-20.
+
+    Résultat : meilleure différenciation en haut de la distribution
+    (Paris 6e ~3.5 vs Rambouillet ~16.6) sans impact sur les communes abordables.
+    """
+    if prix <= 0 or len(all_prix) == 0:
+        return -1.0
+
+    p85 = float(np.percentile(all_prix, 85))
+
+    if prix <= p85:
+        # Percentile parmi les communes <= P85, mappé sur 20-100
+        below = all_prix[all_prix <= p85]
+        rank = float(np.sum(below <= prix)) / len(below)
+        return round(20 + (1 - rank) * 80, 1)
+    else:
+        # Log-linéaire pour le top 15%, mappé sur 0-20
+        log_p85 = np.log(p85)
+        log_max = np.log(float(all_prix.max()))
+        if log_max <= log_p85:
+            return 0.0
+        frac = (np.log(prix) - log_p85) / (log_max - log_p85)
+        return round(max(0, 20 * (1 - frac)), 1)
+
+
 def calculer_score_global(sous_scores: dict[str, float]) -> tuple[float, str, int]:
     """
     Calcule le score global à partir des sous-scores.

@@ -373,17 +373,16 @@ async def appliquer_fallback_knn(session, df_dvf: pd.DataFrame) -> pd.DataFrame:
 
 def calculer_scores_immobilier(df_prix: pd.DataFrame) -> pd.DataFrame:
     """
-    Score immobilier = percentile inversé (moins cher = score plus élevé).
-    0 = le plus cher nationalement, 100 = le moins cher.
-    Le percentile est calculé sur TOUTES les communes (DVF réels + fallback).
+    Score immobilier hybride P85.
+    En dessous de P85 (~2 700 €/m²) : percentile classique mappé sur 20-100.
+    Au-dessus de P85 : log-linéaire mappé sur 0-20 (étale les communes chères).
     """
-    prix_serie = df_prix["prix_m2_median"]
+    from backend.scoring import score_immobilier_hybrid
 
-    # Percentile de chaque commune dans la distribution nationale
-    # sens=inverse : rank dans les prix, puis inversé
     df_prix = df_prix.copy()
-    df_prix["score_immobilier"] = prix_serie.rank(pct=True).apply(
-        lambda p: round((1 - p) * 100, 1)
+    all_prix = df_prix["prix_m2_median"].values
+    df_prix["score_immobilier"] = df_prix["prix_m2_median"].apply(
+        lambda p: score_immobilier_hybrid(p, all_prix)
     )
 
     return df_prix

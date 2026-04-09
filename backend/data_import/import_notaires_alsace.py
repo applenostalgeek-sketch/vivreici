@@ -270,12 +270,13 @@ async def update_db(session, df: pd.DataFrame):
     for _, row in df.iterrows():
         all_prix[row["code_insee"]] = row["prix_m2_median"]
 
-    # Recalculer le percentile pour TOUTES les communes (la distribution change)
-    prix_series = pd.Series(list(all_prix.values()))
+    # Recalculer avec la méthode hybride P85
+    import numpy as np
+    from backend.scoring import score_immobilier_hybrid
+    all_prix_arr = np.array(list(all_prix.values()))
 
-    # Score immobilier = percentile inversé
     def score_immo(prix):
-        return round((1 - (prix_series < prix).mean()) * 100, 1)
+        return score_immobilier_hybrid(prix, all_prix_arr)
 
     # 2. Mettre à jour les communes Alsace-Moselle
     count = 0

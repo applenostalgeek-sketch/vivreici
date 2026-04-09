@@ -163,10 +163,11 @@ async def run():
     df_agg = df_agg[df_agg["nb_transactions"] >= MIN_TRANSACTIONS]
     print(f"  → {len(df_agg):,} IRIS avec >= {MIN_TRANSACTIONS} transactions")
 
-    # Scoring percentile
-    serie_prix = df_agg["prix_m2_median"]
+    # Scoring hybride P85
+    from backend.scoring import score_immobilier_hybrid
+    all_prix_iris = df_agg["prix_m2_median"].values
     df_agg["score_immobilier"] = df_agg["prix_m2_median"].apply(
-        lambda x: percentile_to_score(x, serie_prix, "inverse")
+        lambda x: score_immobilier_hybrid(x, all_prix_iris)
     )
 
     # Upsert
