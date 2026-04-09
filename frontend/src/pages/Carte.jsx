@@ -11,7 +11,7 @@ export default function Carte() {
           <span className="font-light">le</span><span className="font-extrabold text-score-A">bon</span><span className="font-light">quartier</span>
         </Link>
         <div className="flex-1 max-w-sm">
-          <SearchBar size="sm" placeholder="Commune ou adresse…" />
+          <SearchBar size="sm" placeholder="Saisissez une ville ou une adresse" />
         </div>
         <ProfileDropdown />
         <Link to="/classement" className="hidden sm:block flex-shrink-0 text-sm text-ink-light hover:text-ink transition-colors">

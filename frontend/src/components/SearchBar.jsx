@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSearch, locateByCoords } from '../hooks/useSearch.js'
 
-export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une commune ou une adresse…', onSelect, dropUp = false }) {
+export default function SearchBar({ size = 'lg', placeholder = 'Saisissez une ville ou une adresse', onSelect, dropUp = false }) {
   const { query, setQuery, results, loading } = useSearch()
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -117,13 +117,10 @@ export default function SearchBar({ size = 'lg', placeholder = 'Rechercher une c
               `}
             >
               {item._type === 'adresse' ? (
-                <>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-ink-light flex-shrink-0 text-base">📍</span>
-                    <span className="font-medium text-ink truncate">{item.label}</span>
-                  </div>
-                  <span className="text-xs text-ink-light flex-shrink-0">quartier</span>
-                </>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-ink-light flex-shrink-0 text-base">📍</span>
+                  <span className="font-medium text-ink truncate">{item.label}</span>
+                </div>
               ) : (
                 <>
                   <div className="min-w-0">

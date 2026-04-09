@@ -159,7 +159,7 @@ function IrisPicker({ onPick }) {
     return (
       <div className="h-full flex flex-col gap-4">
         <p className="text-sm text-ink-light">Choisissez une commune :</p>
-        <SearchBar size="sm" placeholder="Commune ou adresse…" onSelect={handleCommuneSelect} />
+        <SearchBar size="sm" placeholder="Saisissez une ville ou une adresse" onSelect={handleCommuneSelect} />
         {loadingIris && <p className="text-sm text-ink-light">Chargement des quartiers…</p>}
       </div>
     )

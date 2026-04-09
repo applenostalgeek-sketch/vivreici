@@ -63,6 +63,11 @@ export default function Home() {
     navigate('/')
   }, [navigate])
 
+  const handleLogoClick = useCallback(() => {
+    navigate('/')
+    mapRef.current?.resetView()
+  }, [navigate])
+
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden relative">
 
@@ -72,7 +77,7 @@ export default function Home() {
       </div>
 
       {/* ── NAV ────────────────────────────────────────────── */}
-      <Nav overlay onLogoClick={closePanel} />
+      <Nav overlay onLogoClick={handleLogoClick} />
 
       {/* ── SEARCH BAR (flottant) ──────────────────────────── */}
       {/* Desktop : centré en bas. Mobile : centré en bas au-dessus du panneau */}
@@ -81,7 +86,7 @@ export default function Home() {
           ? 'bottom-3 sm:bottom-6 sm:left-[calc(25%-200px)] sm:translate-x-0'
           : 'bottom-6 sm:bottom-8'
       }`}>
-        <SearchBar size="sm" placeholder="Commune ou adresse…" onSelect={handleSearch} dropUp />
+        <SearchBar size="sm" placeholder="Saisissez une ville ou une adresse" onSelect={handleSearch} dropUp />
       </div>
 
       {/* ── PANNEAU DÉTAIL ─────────────────────────────────── */}
