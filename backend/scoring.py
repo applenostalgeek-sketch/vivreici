@@ -13,8 +13,8 @@ import pandas as pd
 # ONCV, CREDOC, INSEE, France Armor, Qualitel…) — critères réels des Français.
 # Somme = 100%. Le code renormalise quand une catégorie manque (score=-1).
 CATEGORIES = {
-    "equipements":  {"poids": 0.19, "sens": "direct"},   # commerces/services — top 5 enquêtes (36-50%)
-    "immobilier":   {"poids": 0.17, "sens": "inverse"},   # accessibilité prix — #1 critère achat (47-72%)
+    "equipements":  {"poids": 0.16, "sens": "direct"},   # commerces/services — top 5 enquêtes (36-50%)
+    "immobilier":   {"poids": 0.20, "sens": "inverse"},   # accessibilité prix — #1 critère achat (47-72%)
     "sante":        {"poids": 0.17, "sens": "direct"},   # accès soins — top 5 enquêtes (41-66%)
     "transports":   {"poids": 0.15, "sens": "direct"},   # mobilité — variable urbain/rural (24-47%)
     "securite":     {"poids": 0.13, "sens": "inverse"},  # facteur d'élimination — données SSMSI binaires

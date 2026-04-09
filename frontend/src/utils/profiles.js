@@ -8,7 +8,7 @@ export const PROFILES = {
     label: 'Score national',
     emoji: null,
     weights: {
-      equipements: 0.19, immobilier: 0.17, sante: 0.17,
+      equipements: 0.16, immobilier: 0.20, sante: 0.17,
       transports: 0.15, securite: 0.13, education: 0.08,
       environnement: 0.07, risques: 0.04,
     },

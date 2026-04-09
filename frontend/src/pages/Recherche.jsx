@@ -153,7 +153,7 @@ export default function Recherche() {
       const scoreImmoLocal = Math.round((1 - rank) * 100)
       const sousCopy = { ...r.score.sous_scores, immobilier: scoreImmoLocal }
       const cats = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'risques']
-      const weights_def = { equipements: 0.19, immobilier: 0.17, sante: 0.17, transports: 0.15, securite: 0.13, education: 0.08, environnement: 0.07, risques: 0.04 }
+      const weights_def = { equipements: 0.16, immobilier: 0.20, sante: 0.17, transports: 0.15, securite: 0.13, education: 0.08, environnement: 0.07, risques: 0.04 }
       let wsum = 0, vsum = 0
       for (const cat of cats) {
         const v = sousCopy[cat]
