@@ -30,14 +30,13 @@ export const CATEGORY_META = {
   education:     { label: 'Éducation',             icon: '🎓', desc: 'IPS collèges 40% + DNB brevet 40% + lycées pro 20%' },
   transports:    { label: 'Transports',            icon: '🚆', desc: 'Accessibilité gare SNCF + densité arrêts TC (bus/métro/tram)' },
   environnement: { label: 'Environnement',         icon: '🌿', desc: 'Taux d\'espaces non-artificialisés (CEREMA 2023)' },
-  demographie:   { label: 'Démographie',           icon: '📈', desc: 'Évolution population 2016→2021 (INSEE)' },
   risques:       { label: 'Risques naturels',       icon: '⚠️', desc: 'PPR naturels approuvés — inondation, séisme, mouvement de terrain, feux de forêt, avalanche (GASPAR)' },
 }
 
 // Catégories disponibles au niveau IRIS
 // Local = données propres au quartier ; commune = injectées depuis la commune parente
 export const IRIS_CATEGORIES_LOCAL = ['equipements', 'sante', 'immobilier']
-export const IRIS_CATEGORIES_COMMUNE = ['securite', 'transports', 'education', 'risques', 'demographie', 'environnement']
+export const IRIS_CATEGORIES_COMMUNE = ['securite', 'transports', 'education', 'risques', 'environnement']
 export const IRIS_CATEGORIES = [...IRIS_CATEGORIES_LOCAL, ...IRIS_CATEGORIES_COMMUNE]
 
 // ─── Filtres & options ────────────────────────────────────────────────────────

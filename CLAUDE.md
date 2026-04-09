@@ -2,7 +2,7 @@
 
 ## Contexte
 Plateforme de scoring de qualité de vie des communes françaises basée sur l'open data.
-Score A-E par commune (style Nutri-Score) — 9 catégories.
+Score A-E par commune (style Nutri-Score) — 8 catégories.
 
 ## Conventions
 - Python 3.11+, FastAPI, SQLAlchemy async (aiosqlite)
@@ -123,13 +123,13 @@ Depuis `/Users/admin/vivreici/` :
   - Qualité air : indice ATMO moyen annuel (Atmo France, WFS public). `score_qualite_air`, `qualite_air_moy`, `qualite_air_nb_jours` stockés en DB.
   - Si commune sans données qualité air (37% des communes, surtout rurales) : score environnement = artificialisation seule.
   - Mise à jour : relancer `import_environnement` puis `import_qualite_air` (ordre important — qualite_air recalcule le composite).
-- `score_demographie` : Évolution population 2016→2021 (Populations légales INSEE). Percentile direct.
+- `score_demographie` : RETIRÉ du score global (autoréférentiel — la croissance est une conséquence, pas un critère). Données conservées en DB pour affichage uniquement.
 - `score_risques` : PPR naturels approuvés GASPAR — composite inondation(35%)+séisme(30%)+MVT(20%)+forêt(10%)+avalanche(5%). Percentile inversé.
 
 ### IRIS
 - 48,569 zones IRIS importées (IGN 2024)
 - 40,860 scorées avec >= 2 catégories (99% coverage des IRIS avec données locales)
-- **7 catégories IRIS** : équipements, santé, immobilier (locaux) + sécurité, transports, éducation, risques (injectés depuis commune)
+- **8 catégories IRIS** : équipements, santé, immobilier (locaux) + sécurité, transports, éducation, environnement, risques (injectés depuis commune)
 - **Même méthodologie et poids que les communes** (CATEGORIES dict) → scores comparables
 - `import_commune_to_iris.py` : transfère les 3 sous-scores commune + fallback santé APL
 - `score_revenus` : stocké en DB mais EXCLU du score (cohérence avec communes)

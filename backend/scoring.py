@@ -9,19 +9,21 @@ import pandas as pd
 
 
 # Poids de chaque catégorie — renormalisés automatiquement si catégorie absente
-# Logique : score par défaut calibré pour l'actif en mobilité (profil majoritaire)
+# Calibrage basé sur 14 enquêtes nationales (OpinionWay, IFOP, Ipsos, Guy Hoquet/YouGov,
+# ONCV, CREDOC, INSEE, France Armor, Qualitel…) — critères réels des Français.
+# Somme = 100%. Le code renormalise quand une catégorie manque (score=-1).
 CATEGORIES = {
-    "equipements":  {"poids": 0.20, "sens": "direct"},   # critère quotidien, données BPE fiables
-    "transports":   {"poids": 0.18, "sens": "direct"},   # critère décisif hors métropole
-    "sante":        {"poids": 0.18, "sens": "direct"},   # APL DREES — accessibilité aire de chalandise
-    "securite":     {"poids": 0.14, "sens": "inverse"},  # facteur d'élimination, données SSMSI biaisées
-    "immobilier":   {"poids": 0.14, "sens": "inverse"},  # accessibilité logement
+    "equipements":  {"poids": 0.19, "sens": "direct"},   # commerces/services — top 5 enquêtes (36-50%)
+    "immobilier":   {"poids": 0.17, "sens": "inverse"},   # accessibilité prix — #1 critère achat (47-72%)
+    "sante":        {"poids": 0.17, "sens": "direct"},   # accès soins — top 5 enquêtes (41-66%)
+    "transports":   {"poids": 0.15, "sens": "direct"},   # mobilité — variable urbain/rural (24-47%)
+    "securite":     {"poids": 0.13, "sens": "inverse"},  # facteur d'élimination — données SSMSI binaires
     "education":    {"poids": 0.08, "sens": "direct"},   # IPS 40% + DNB 40% + lycée pro 20%
-    "environnement":{"poids": 0.08, "sens": "inverse"},  # espaces non-artificialisés CEREMA 2023
-    "demographie":  {"poids": 0.04, "sens": "direct"},   # évolution population 2017→2023
-    "risques":      {"poids": 0.09, "sens": "inverse"},  # PPR naturels GASPAR (inondation/séisme/MVT/forêt/avalanche)
-    # NB : le code renormalise automatiquement quand une catégorie manque (score=-1).
-    # Cohésion (revenus) retirée : taux pauvreté = proxy richesse, biais ségrégant (ex: Saclay 97/100).
+    "environnement":{"poids": 0.07, "sens": "inverse"},  # artificialisation CEREMA + qualité air ATMO
+    "risques":      {"poids": 0.04, "sens": "inverse"},  # PPR naturels GASPAR — jamais cité en enquête
+    # Catégories retirées :
+    # - demographie : autoréférentiel (la croissance est une conséquence, pas un critère de choix)
+    # - revenus : biais ségrégant (Saclay 97/100 = riche, pas accessible)
 }
 
 

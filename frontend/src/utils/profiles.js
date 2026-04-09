@@ -8,9 +8,9 @@ export const PROFILES = {
     label: 'Score national',
     emoji: null,
     weights: {
-      equipements: 0.20, transports: 0.18, sante: 0.18,
-      securite: 0.14, immobilier: 0.14, education: 0.08,
-      environnement: 0.08, demographie: 0.04, risques: 0.09,
+      equipements: 0.19, immobilier: 0.17, sante: 0.17,
+      transports: 0.15, securite: 0.13, education: 0.08,
+      environnement: 0.07, risques: 0.04,
     },
   },
   famille: {
@@ -19,7 +19,7 @@ export const PROFILES = {
     weights: {
       education: 0.27, securite: 0.22, equipements: 0.18,
       sante: 0.14, transports: 0.10, immobilier: 0.06,
-      environnement: 0.02, demographie: 0.01, risques: 0.02,
+      environnement: 0.02, risques: 0.01,
     },
   },
   jeune_actif: {
@@ -28,7 +28,7 @@ export const PROFILES = {
     weights: {
       transports: 0.30, immobilier: 0.26, equipements: 0.18,
       securite: 0.12, sante: 0.08, education: 0.03,
-      environnement: 0.02, demographie: 0.01, risques: 0.01,
+      environnement: 0.02, risques: 0.01,
     },
   },
   calme: {
@@ -36,8 +36,8 @@ export const PROFILES = {
     emoji: '🌿',
     weights: {
       environnement: 0.28, immobilier: 0.20, securite: 0.18,
-      sante: 0.15, equipements: 0.10, demographie: 0.06,
-      transports: 0.02, education: 0.01, risques: 0.04,
+      sante: 0.15, equipements: 0.10,
+      transports: 0.02, education: 0.01, risques: 0.06,
     },
   },
   retraite: {
@@ -46,7 +46,7 @@ export const PROFILES = {
     weights: {
       sante: 0.32, securite: 0.22, environnement: 0.16,
       equipements: 0.14, transports: 0.08, immobilier: 0.06,
-      demographie: 0.01, education: 0.01, risques: 0.03,
+      education: 0.01, risques: 0.01,
     },
   },
   budget: {
@@ -55,7 +55,7 @@ export const PROFILES = {
     weights: {
       immobilier: 0.40, transports: 0.16, equipements: 0.15,
       sante: 0.12, securite: 0.10, education: 0.04,
-      environnement: 0.02, demographie: 0.01, risques: 0.01,
+      environnement: 0.02, risques: 0.01,
     },
   },
 }

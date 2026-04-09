@@ -95,7 +95,6 @@ def main():
                 'sante':        sub(s['score_sante']),
                 'transports':   sub(s['score_transports']),
                 'environnement':sub(s['score_environnement']),
-                'demographie':  sub(s['score_demographie']),
                 'risques':      sub(s.get('score_risques')),
             },
             'donnees_brutes': {
@@ -181,17 +180,17 @@ def main():
         'nb_communes': len(communes_map),
         'nb_scorees': nb_scorees,
         'nb_iris': nb_iris_total,
-        'categories': ['equipements', 'sante', 'securite', 'immobilier', 'education',
-                       'transports', 'environnement', 'demographie', 'risques'],
+        'categories': ['equipements', 'immobilier', 'sante', 'transports', 'securite',
+                       'education', 'environnement', 'risques'],
     }
     dump(DATA / 'stats.json', stats)
     print(f"  stats.json OK")
 
     # ── 5. communes-map.json (slim — carte + recherche de base) ─────────────
     # Ordre des sous_scores pour communes-scores.json (compact array)
-    SS_ORDER = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'demographie', 'risques']
+    SS_ORDER = ['equipements', 'securite', 'immobilier', 'education', 'sante', 'transports', 'environnement', 'risques']
     SS_COLS  = ['score_equipements', 'score_securite', 'score_immobilier', 'score_education',
-                'score_sante', 'score_transports', 'score_environnement', 'score_demographie', 'score_risques']
+                'score_sante', 'score_transports', 'score_environnement', 'score_risques']
 
     print("Génération communes-map.json (slim)...")
     map_communes = []
@@ -343,7 +342,6 @@ def main():
                         'transports':    sub_i(r.get('score_transports')),
                         'education':     sub_i(r.get('score_education')),
                         'risques':       sub_i(r.get('score_risques')),
-                        'demographie':   sub_i(r.get('score_demographie')),
                         'environnement': sub_i(r.get('score_environnement')),
                     },
                 })
@@ -405,7 +403,6 @@ def main():
                 'transports':    sub_iv(r.get('score_transports')),
                 'education':     sub_iv(r.get('score_education')),
                 'risques':       sub_iv(r.get('score_risques')),
-                'demographie':   sub_iv(r.get('score_demographie')),
                 'environnement': sub_iv(r.get('score_environnement')),
             },
             'donnees_brutes': {

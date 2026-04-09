@@ -71,7 +71,6 @@ def score_to_dict(score: Score) -> dict:
             "sante": score.score_sante if score.score_sante >= 0 else None,
             "transports": score.score_transports if score.score_transports >= 0 else None,
             "environnement": score.score_environnement if score.score_environnement >= 0 else None,
-            "demographie": score.score_demographie if score.score_demographie >= 0 else None,
             "risques": score.score_risques if score.score_risques >= 0 else None,
         },
         "donnees_brutes": {
@@ -122,7 +121,6 @@ def iris_score_to_dict(iz: IrisZone, s: IrisScore) -> dict:
                 "transports": s.score_transports if s.score_transports >= 0 else None,
                 "education": s.score_education if s.score_education >= 0 else None,
                 "risques": s.score_risques if s.score_risques >= 0 else None,
-                "demographie": s.score_demographie if s.score_demographie >= 0 else None,
                 "environnement": s.score_environnement if s.score_environnement >= 0 else None,
             },
             "donnees_brutes": {
@@ -678,8 +676,8 @@ async def stats(db: AsyncSession = Depends(get_db)):
         "nb_communes": nb_communes or 0,
         "nb_scorees": nb_scorees or 0,
         "nb_iris": nb_iris or 0,
-        "categories": ["equipements", "sante", "securite", "immobilier", "education",
-                       "transports", "environnement", "demographie"],
+        "categories": ["equipements", "immobilier", "sante", "transports", "securite",
+                       "education", "environnement", "risques"],
     }
 
 
