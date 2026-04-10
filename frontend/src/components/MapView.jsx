@@ -188,7 +188,10 @@ const MapView = forwardRef(function MapView({
   useEffect(() => {
     if (!leafletMap.current || !markerLayerRef.current || !leafletRef.current) return
     const L = leafletRef.current
-    markerLayerRef.current.clearLayers()
+    const map = leafletMap.current
+    const layer = markerLayerRef.current
+
+    layer.clearLayers()
     if (marker) {
       const pinIcon = L.divIcon({
         html: `<svg viewBox="0 0 24 36" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
@@ -197,9 +200,16 @@ const MapView = forwardRef(function MapView({
         </svg>`,
         className: '', iconSize: [28, 42], iconAnchor: [14, 42],
       })
-      const m = L.marker([marker.lat, marker.lng], { icon: pinIcon, pane: 'pinPane' })
+      const m = L.marker([marker.lat, marker.lng], { icon: pinIcon, pane: 'pinPane', zIndexOffset: 1000 })
       if (marker.label) m.bindTooltip(marker.label, { permanent: false })
-      m.addTo(markerLayerRef.current)
+      m.addTo(layer)
+
+      // Remettre le pin au-dessus après chaque zoom (les polygones se redessinent)
+      const bringToFront = () => {
+        if (layer._map) { layer.removeFrom(map); layer.addTo(map) }
+      }
+      map.on('zoomend', bringToFront)
+      return () => { map.off('zoomend', bringToFront) }
     }
   }, [marker])
 
@@ -224,21 +234,10 @@ const MapView = forwardRef(function MapView({
 
       // ── Marker pin adresse (pane dédié au-dessus des polygones) ─────────────
       const pinPane = map.createPane('pinPane')
-      pinPane.style.zIndex = 650
+      pinPane.style.zIndex = 700
+      pinPane.style.pointerEvents = 'none'
       const markerLayer = L.layerGroup({ pane: 'pinPane' }).addTo(map)
       markerLayerRef.current = markerLayer
-      if (marker) {
-        const pinIcon = L.divIcon({
-          html: `<svg viewBox="0 0 24 36" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="2"/>
-            <circle cx="12" cy="12" r="4.5" fill="white"/>
-          </svg>`,
-          className: '', iconSize: [28, 42], iconAnchor: [14, 42],
-        })
-        const m = L.marker([marker.lat, marker.lng], { icon: pinIcon, pane: 'pinPane' })
-        if (marker.label) m.bindTooltip(marker.label, { permanent: false })
-        m.addTo(markerLayer)
-      }
 
       // ── Couche cercles (conservés pour rollback) ─────────────────────────────
       const circleLayer = L.layerGroup()
