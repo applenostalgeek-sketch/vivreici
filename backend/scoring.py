@@ -28,11 +28,12 @@ CATEGORIES = {
 
 
 def score_to_lettre(score: float) -> str:
-    """Convertit un score 0-100 en lettre A-E."""
-    if score >= 80: return "A"
-    if score >= 60: return "B"
-    if score >= 40: return "C"
-    if score >= 20: return "D"
+    """Convertit un score 0-100 en lettre A-E (arrondi entier pour cohérence affichage)."""
+    s = round(score)
+    if s >= 80: return "A"
+    if s >= 60: return "B"
+    if s >= 40: return "C"
+    if s >= 20: return "D"
     return "E"
 
 

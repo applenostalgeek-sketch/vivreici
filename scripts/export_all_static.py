@@ -240,6 +240,25 @@ def main():
     dump(PUBLIC / 'iris-locator.json', locator)
     print(f"  iris-locator.json: {len(locator)} IRIS")
 
+    # ── 6b. iris-scores.json (compact classement quartiers) ─────────────────
+    print("Génération iris-scores.json...")
+    iris_classement = []
+    for r in iris_rows:
+        d = dict(r)
+        if d['typ_iris'] == 'Z':
+            continue
+        sg = d.get('score_global')
+        if sg is None:
+            continue
+        ncs = d.get('nb_categories_scorees') or 0
+        if ncs < 2:
+            continue
+        iris_classement.append([d['code_iris'], d['nom'], d['code_commune'], round(sg, 1)])
+    # Tri par score décroissant
+    iris_classement.sort(key=lambda x: x[3], reverse=True)
+    dump(PUBLIC / 'iris-scores.json', iris_classement)
+    print(f"  iris-scores.json: {len(iris_classement)} quartiers")
+
     # ── 7. Rang par département ──────────────────────────────────────────────
     print("Calcul des rangs par département...")
     dept_scores = {}

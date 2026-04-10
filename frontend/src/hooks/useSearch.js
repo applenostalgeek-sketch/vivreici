@@ -46,6 +46,16 @@ function loadIrisLocator() {
   return irisLocatorPromise
 }
 
+// Cache singleton iris-scores.json (compact classement)
+// Format : [[code_iris, nom, code_commune, score_global], ...]
+let irisScoresPromise = null
+export function loadIrisScores() {
+  if (!irisScoresPromise) {
+    irisScoresPromise = fetch('/iris-scores.json').then(r => r.json())
+  }
+  return irisScoresPromise
+}
+
 function normalize(s) {
   return (s || '').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -309,4 +319,81 @@ export async function getClassement(params = {}) {
       },
     }
   })
+}
+
+/**
+ * Classement par département — agrège les communes par département.
+ * Retourne [{ dept, region, score_moy, lettre, nb_communes, population }]
+ */
+export async function getDeptClassement({ weights } = {}) {
+  const [communes, sMap] = await Promise.all([loadCommunes(), weights ? loadCommunesScores() : Promise.resolve(null)])
+
+  const byDept = {}
+  for (const c of communes) {
+    if (c.score_global == null) continue
+    const d = c.departement
+    if (!byDept[d]) byDept[d] = { dept: d, region: c.region, scores: [], pop: 0 }
+
+    let score = c.score_global
+    if (weights && sMap) {
+      const ss = sMap.get(c.code_insee)?.sous_scores
+      score = _computeProfileScore(ss, weights) ?? score
+    }
+    byDept[d].scores.push(score)
+    byDept[d].pop += c.population || 0
+  }
+
+  return Object.values(byDept)
+    .map(d => {
+      const avg = d.scores.reduce((a, b) => a + b, 0) / d.scores.length
+      return {
+        dept: d.dept,
+        region: d.region,
+        score_moy: Math.round(avg * 10) / 10,
+        lettre: _scoreToLettre(avg),
+        nb_communes: d.scores.length,
+        population: d.pop,
+      }
+    })
+    .sort((a, b) => b.score_moy - a.score_moy)
+}
+
+/**
+ * Classement IRIS (quartiers) — filtré par département.
+ */
+export async function getIrisClassement({ departement, limit = 50, offset = 0 } = {}) {
+  const iris = await loadIrisScores()
+
+  let filtered = iris
+  if (departement) {
+    // dept = first 2 chars of code_commune, or 3 for Corse (2A/2B)
+    filtered = iris.filter(([, , cc]) => {
+      const d = cc.startsWith('2A') || cc.startsWith('2B') ? cc.slice(0, 2) : cc.slice(0, 2)
+      return d === departement.slice(0, 2)
+    })
+    // More precise for Corse
+    if (departement === '2A' || departement === '2B') {
+      filtered = iris.filter(([, , cc]) => cc.startsWith(departement))
+    }
+  }
+
+  // Already sorted desc by score in the JSON
+  const total = filtered.length
+  const page = filtered.slice(Number(offset), Number(offset) + Number(limit))
+
+  // Load communes map to get commune names
+  const communes = await loadCommunes()
+  const communeMap = new Map(communes.map(c => [c.code_insee, c.nom]))
+
+  return {
+    total,
+    items: page.map(([code_iris, nom, code_commune, score_global]) => ({
+      code_iris,
+      nom,
+      code_commune,
+      commune_nom: communeMap.get(code_commune) || code_commune,
+      score_global,
+      lettre: _scoreToLettre(score_global),
+    })),
+  }
 }

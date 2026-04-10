@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
 import MapView from '../components/MapView.jsx'
@@ -12,6 +12,7 @@ export default function Home() {
   const { codeInsee, codeIris } = useParams()
   const navigate = useNavigate()
   const mapRef = useRef(null)
+  const [addressMarker, setAddressMarker] = useState(null)
 
   // Déterminer le mode panneau
   const panelType = codeIris ? 'iris' : codeInsee ? 'commune' : null
@@ -31,7 +32,8 @@ export default function Home() {
   // Quand on sélectionne dans la recherche → zoom la carte
   const handleSearch = useCallback(async (item) => {
     if (item._type === 'adresse') {
-      // Adresse → trouver le code IRIS et zoomer
+      // Adresse → placer un marqueur et zoomer
+      setAddressMarker({ lat: item.lat, lng: item.lng, label: item.label })
       try {
         const loc = await locateByCoords(item.lat, item.lng, item.code_insee)
         if (loc.code_iris) {
@@ -51,7 +53,8 @@ export default function Home() {
         }
       }
     } else {
-      // Commune → zoomer sur la commune
+      // Commune → zoomer sur la commune (pas de marqueur)
+      setAddressMarker(null)
       if (item.latitude && item.longitude) {
         mapRef.current?.flyTo(item.latitude, item.longitude, 13)
       }
@@ -60,11 +63,13 @@ export default function Home() {
   }, [navigate])
 
   const closePanel = useCallback(() => {
+    setAddressMarker(null)
     navigate('/')
   }, [navigate])
 
   const handleLogoClick = useCallback(() => {
     navigate('/')
+    setAddressMarker(null)
     mapRef.current?.resetView()
   }, [navigate])
 
@@ -73,7 +78,7 @@ export default function Home() {
 
       {/* ── MAP ────────────────────────────────────────────── */}
       <div className="absolute inset-0 z-0">
-        <MapView ref={mapRef} className="h-full w-full" onSelect={handleMapSelect} />
+        <MapView ref={mapRef} className="h-full w-full" onSelect={handleMapSelect} marker={addressMarker} />
       </div>
 
       {/* ── NAV ────────────────────────────────────────────── */}
