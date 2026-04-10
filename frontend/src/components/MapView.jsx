@@ -191,14 +191,14 @@ const MapView = forwardRef(function MapView({
     markerLayerRef.current.clearLayers()
     if (marker) {
       const pinIcon = L.divIcon({
-        html: `<svg viewBox="0 0 24 36" width="24" height="36" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="1.5"/>
+        html: `<svg viewBox="0 0 24 36" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="2"/>
           <circle cx="12" cy="12" r="4.5" fill="white"/>
         </svg>`,
-        className: '', iconSize: [24, 36], iconAnchor: [12, 36],
+        className: '', iconSize: [28, 42], iconAnchor: [14, 42],
       })
-      const m = L.marker([marker.lat, marker.lng], { icon: pinIcon })
-      if (marker.label) m.bindTooltip(marker.label)
+      const m = L.marker([marker.lat, marker.lng], { icon: pinIcon, pane: 'pinPane' })
+      if (marker.label) m.bindTooltip(marker.label, { permanent: false })
       m.addTo(markerLayerRef.current)
     }
   }, [marker])
@@ -222,19 +222,21 @@ const MapView = forwardRef(function MapView({
         maxZoom: 19,
       }).addTo(map)
 
-      // ── Marker pin adresse ───────────────────────────────────────────────────
-      const markerLayer = L.layerGroup().addTo(map)
+      // ── Marker pin adresse (pane dédié au-dessus des polygones) ─────────────
+      const pinPane = map.createPane('pinPane')
+      pinPane.style.zIndex = 650
+      const markerLayer = L.layerGroup({ pane: 'pinPane' }).addTo(map)
       markerLayerRef.current = markerLayer
       if (marker) {
         const pinIcon = L.divIcon({
-          html: `<svg viewBox="0 0 24 36" width="24" height="36" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="1.5"/>
+          html: `<svg viewBox="0 0 24 36" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="2"/>
             <circle cx="12" cy="12" r="4.5" fill="white"/>
           </svg>`,
-          className: '', iconSize: [24, 36], iconAnchor: [12, 36],
+          className: '', iconSize: [28, 42], iconAnchor: [14, 42],
         })
-        const m = L.marker([marker.lat, marker.lng], { icon: pinIcon })
-        if (marker.label) m.bindTooltip(marker.label)
+        const m = L.marker([marker.lat, marker.lng], { icon: pinIcon, pane: 'pinPane' })
+        if (marker.label) m.bindTooltip(marker.label, { permanent: false })
         m.addTo(markerLayer)
       }
 
