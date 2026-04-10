@@ -73,7 +73,7 @@ const MapView = forwardRef(function MapView({
   const renderDeptsRef       = useRef(null)
   const communePolyLayerRef  = useRef(null)
   const irisLayerRef         = useRef(null)
-  const markerLayerRef       = useRef(null)
+  const pinElRef             = useRef(null)
   const activeLettersRef     = useRef(new Set(['A', 'B', 'C', 'D', 'E']))
   const chargerCommunePolyRef = useRef(null)
   const chargerIrisRef        = useRef(null)
@@ -184,32 +184,48 @@ const MapView = forwardRef(function MapView({
     updateForProfile()
   }, [profile])
 
-  // Mise à jour du marker pin
+  // Pin adresse — div positionné hors du système de panes Leaflet
+  // pour garantir la visibilité au-dessus du canvas et des polygones
   useEffect(() => {
-    if (!leafletMap.current || !markerLayerRef.current || !leafletRef.current) return
-    const L = leafletRef.current
+    if (!leafletMap.current) return
     const map = leafletMap.current
-    const layer = markerLayerRef.current
+    const container = map.getContainer()
 
-    layer.clearLayers()
-    if (marker) {
-      const pinIcon = L.divIcon({
-        html: `<svg viewBox="0 0 24 36" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="2"/>
-          <circle cx="12" cy="12" r="4.5" fill="white"/>
-        </svg>`,
-        className: '', iconSize: [28, 42], iconAnchor: [14, 42],
-      })
-      const m = L.marker([marker.lat, marker.lng], { icon: pinIcon, pane: 'pinPane', zIndexOffset: 1000 })
-      if (marker.label) m.bindTooltip(marker.label, { permanent: false })
-      m.addTo(layer)
+    // Nettoyer l'ancien pin
+    if (pinElRef.current) {
+      pinElRef.current.remove()
+      pinElRef.current = null
+    }
 
-      // Remettre le pin au-dessus après chaque zoom (les polygones se redessinent)
-      const bringToFront = () => {
-        if (layer._map) { layer.removeFrom(map); layer.addTo(map) }
-      }
-      map.on('zoomend', bringToFront)
-      return () => { map.off('zoomend', bringToFront) }
+    if (!marker) return
+
+    // Créer le pin
+    const pin = document.createElement('div')
+    pin.style.cssText = 'position:absolute;z-index:10000;pointer-events:none;width:28px;height:42px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));transition:opacity 0.2s;'
+    pin.innerHTML = `<svg viewBox="0 0 24 36" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="2"/>
+      <circle cx="12" cy="12" r="4.5" fill="white"/>
+    </svg>`
+    container.appendChild(pin)
+    pinElRef.current = pin
+
+    function updatePosition() {
+      const point = map.latLngToContainerPoint([marker.lat, marker.lng])
+      pin.style.left = (point.x - 14) + 'px'
+      pin.style.top = (point.y - 42) + 'px'
+    }
+
+    updatePosition()
+    map.on('move', updatePosition)
+    map.on('zoom', updatePosition)
+    map.on('viewreset', updatePosition)
+
+    return () => {
+      map.off('move', updatePosition)
+      map.off('zoom', updatePosition)
+      map.off('viewreset', updatePosition)
+      if (pin.parentNode) pin.remove()
+      pinElRef.current = null
     }
   }, [marker])
 
@@ -232,12 +248,7 @@ const MapView = forwardRef(function MapView({
         maxZoom: 19,
       }).addTo(map)
 
-      // ── Marker pin adresse (pane dédié au-dessus des polygones) ─────────────
-      const pinPane = map.createPane('pinPane')
-      pinPane.style.zIndex = 700
-      pinPane.style.pointerEvents = 'none'
-      const markerLayer = L.layerGroup({ pane: 'pinPane' }).addTo(map)
-      markerLayerRef.current = markerLayer
+      // Le pin adresse est géré hors Leaflet (voir useEffect [marker])
 
       // ── Couche cercles (conservés pour rollback) ─────────────────────────────
       const circleLayer = L.layerGroup()
