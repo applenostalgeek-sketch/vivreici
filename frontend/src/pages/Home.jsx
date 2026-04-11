@@ -63,7 +63,6 @@ export default function Home() {
   }, [navigate])
 
   const closePanel = useCallback(() => {
-    setAddressMarker(null)
     navigate('/')
   }, [navigate])
 
