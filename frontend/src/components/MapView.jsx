@@ -73,7 +73,7 @@ const MapView = forwardRef(function MapView({
   const renderDeptsRef       = useRef(null)
   const communePolyLayerRef  = useRef(null)
   const irisLayerRef         = useRef(null)
-  const pinElRef             = useRef(null)
+  const pinPopupRef          = useRef(null)
   const activeLettersRef     = useRef(new Set(['A', 'B', 'C', 'D', 'E']))
   const chargerCommunePolyRef = useRef(null)
   const chargerIrisRef        = useRef(null)
@@ -184,48 +184,42 @@ const MapView = forwardRef(function MapView({
     updateForProfile()
   }, [profile])
 
-  // Pin adresse — div positionné hors du système de panes Leaflet
-  // pour garantir la visibilité au-dessus du canvas et des polygones
+  // Pin adresse — L.popup natif Leaflet (gère flyTo, zoom, pan correctement)
   useEffect(() => {
-    if (!leafletMap.current) return
+    if (!leafletMap.current || !leafletRef.current) return
     const map = leafletMap.current
-    const container = map.getContainer()
+    const L = leafletRef.current
 
-    // Nettoyer l'ancien pin
-    if (pinElRef.current) {
-      pinElRef.current.remove()
-      pinElRef.current = null
+    // Nettoyer l'ancien popup-pin
+    if (pinPopupRef.current) {
+      map.closePopup(pinPopupRef.current)
+      pinPopupRef.current = null
     }
 
     if (!marker) return
 
-    // Créer le pin
-    const pin = document.createElement('div')
-    pin.style.cssText = 'position:absolute;z-index:10000;pointer-events:none;width:28px;height:42px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));transition:opacity 0.2s;'
-    pin.innerHTML = `<svg viewBox="0 0 24 36" width="28" height="42" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="2"/>
-      <circle cx="12" cy="12" r="4.5" fill="white"/>
-    </svg>`
-    container.appendChild(pin)
-    pinElRef.current = pin
+    const popup = L.popup({
+      closeButton: false,
+      closeOnClick: false,
+      autoClose: false,
+      autoPan: false,
+      className: 'address-pin-popup',
+      offset: [0, 0],
+    })
+      .setLatLng([marker.lat, marker.lng])
+      .setContent(`<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">
+        <svg viewBox="0 0 24 36" width="28" height="42" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+          <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1c1917" stroke="white" stroke-width="2"/>
+          <circle cx="12" cy="12" r="4.5" fill="white"/>
+        </svg>
+      </div>`)
+      .openOn(map)
 
-    function updatePosition() {
-      const point = map.latLngToContainerPoint([marker.lat, marker.lng])
-      pin.style.left = (point.x - 14) + 'px'
-      pin.style.top = (point.y - 42) + 'px'
-    }
-
-    updatePosition()
-    map.on('move', updatePosition)
-    map.on('zoom', updatePosition)
-    map.on('viewreset', updatePosition)
+    pinPopupRef.current = popup
 
     return () => {
-      map.off('move', updatePosition)
-      map.off('zoom', updatePosition)
-      map.off('viewreset', updatePosition)
-      if (pin.parentNode) pin.remove()
-      pinElRef.current = null
+      map.closePopup(popup)
+      pinPopupRef.current = null
     }
   }, [marker])
 
@@ -248,7 +242,7 @@ const MapView = forwardRef(function MapView({
         maxZoom: 19,
       }).addTo(map)
 
-      // Le pin adresse est géré hors Leaflet (voir useEffect [marker])
+      // Le pin adresse est géré via L.popup (voir useEffect [marker])
 
       // ── Couche cercles (conservés pour rollback) ─────────────────────────────
       const circleLayer = L.layerGroup()

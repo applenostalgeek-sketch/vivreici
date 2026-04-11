@@ -82,6 +82,21 @@
   animation: slideInUp 0.3s ease-out forwards;
 }
 
+/* Pin adresse — retire le style popup Leaflet par défaut */
+.address-pin-popup .leaflet-popup-content-wrapper {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+.address-pin-popup .leaflet-popup-content {
+  margin: 0;
+  line-height: 1;
+}
+.address-pin-popup .leaflet-popup-tip-container {
+  display: none;
+}
+
 @media print {
   nav, .print\:hidden { display: none !important; }
   body { background: white !important; }
